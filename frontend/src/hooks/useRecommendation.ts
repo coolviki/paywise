@@ -84,8 +84,11 @@ export function useSearch() {
         });
 
         const response = await api.get<Merchant[]>(`/search/nearby?${params}`);
-        setResults(response.data);
-      } catch {
+        // Ensure response.data is an array
+        const data = Array.isArray(response.data) ? response.data : [];
+        setResults(data);
+      } catch (err) {
+        console.error('Nearby search error:', err);
         setResults([]);
       } finally {
         setIsLoading(false);

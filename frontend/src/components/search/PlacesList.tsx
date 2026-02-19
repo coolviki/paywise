@@ -11,7 +11,10 @@ interface PlacesListProps {
 }
 
 export function PlacesList({ merchants, onSelect, title }: PlacesListProps) {
-  if (merchants.length === 0) {
+  // Ensure merchants is an array
+  const merchantList = Array.isArray(merchants) ? merchants : [];
+
+  if (merchantList.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
         <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -29,7 +32,7 @@ export function PlacesList({ merchants, onSelect, title }: PlacesListProps) {
         </h3>
       )}
       <div className="space-y-2">
-        {merchants.map((merchant) => (
+        {merchantList.map((merchant) => (
           <PlaceCard key={merchant.id} merchant={merchant} onSelect={onSelect} />
         ))}
       </div>
