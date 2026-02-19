@@ -3,6 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from ..core.database import get_db
+from ..core.security import get_current_user
+from ..models.user import User
 from ..schemas.recommendation import SearchQuery, MerchantSearchResult, MerchantLocationResult
 from ..services.location_service import LocationService
 
@@ -16,6 +18,7 @@ async def search_merchants(
     longitude: Optional[float] = Query(None, description="User's longitude"),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Search merchants by name with optional location context."""
     results = LocationService.search_merchants(
@@ -52,6 +55,7 @@ async def get_nearby_merchants(
     radius_km: float = Query(5.0, ge=0.1, le=50, description="Search radius in km"),
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get merchants near a location."""
     results = LocationService.get_nearby_merchants(
@@ -96,6 +100,7 @@ async def search_google_places(
     q: str = Query(..., min_length=1, description="Search query"),
     latitude: Optional[float] = Query(None, description="User's latitude"),
     longitude: Optional[float] = Query(None, description="User's longitude"),
+    current_user: User = Depends(get_current_user),
 ):
     """Search places using Google Places API."""
     results = await LocationService.search_google_places(q, latitude, longitude)
