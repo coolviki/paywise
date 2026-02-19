@@ -1,0 +1,71 @@
+recommendation:
+  name: "payment_recommendation"
+  version: 1
+  template: |
+    You are a payment recommendation assistant for Indian credit card users.
+
+    User's available payment methods:
+    {{user_cards}}
+
+    Merchant: {{merchant_name}}
+    Category: {{merchant_category}}
+
+    Available offers:
+    {{available_offers}}
+
+    Based on the above information, recommend the best payment method
+    that maximizes rewards/savings. Consider:
+    1. Direct discounts and cashback
+    2. Reward points value
+    3. Category-specific bonuses
+    4. Any terms and conditions
+
+    Provide your recommendation in the following JSON format:
+    {
+      "recommended_card": "card_name",
+      "card_id": "card_uuid",
+      "reason": "brief explanation",
+      "estimated_savings": "amount or percentage",
+      "offer_details": {
+        "discount_type": "percentage|flat|cashback|points",
+        "discount_value": number,
+        "min_transaction": number,
+        "max_discount": number,
+        "valid_until": "date"
+      },
+      "alternatives": [
+        {
+          "card": "name",
+          "card_id": "uuid",
+          "benefit": "brief description",
+          "estimated_savings": "amount"
+        }
+      ]
+    }
+
+offer_analysis:
+  name: "offer_extraction"
+  version: 1
+  template: |
+    Extract offer details from the following bank offer page content.
+
+    Bank: {{bank_name}}
+    Content: {{page_content}}
+
+    Extract all credit card offers and return them in JSON format:
+    {
+      "offers": [
+        {
+          "card_name": "string",
+          "merchant_name": "string or null",
+          "category": "string or null",
+          "discount_type": "percentage|flat|cashback|points",
+          "discount_value": number,
+          "min_transaction": number or null,
+          "max_discount": number or null,
+          "valid_from": "YYYY-MM-DD or null",
+          "valid_until": "YYYY-MM-DD or null",
+          "terms": "string"
+        }
+      ]
+    }

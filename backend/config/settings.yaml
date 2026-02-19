@@ -1,0 +1,25 @@
+app:
+  name: "PayWise"
+  version: "1.0.0"
+  debug: false
+
+database:
+  pool_size: 5
+  max_overflow: 10
+
+auth:
+  providers:
+    - google
+  jwt_algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+google:
+  places_api_enabled: true
+
+llm:
+  provider: "anthropic"
+  model: "claude-3-sonnet-20240229"
+
+offer_fetcher:
+  schedule: "0 6 * * *"
+  enabled: true
