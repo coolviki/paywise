@@ -14,7 +14,8 @@ export const fetchBanks = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get<Bank[]>('/cards/banks');
-      return response.data;
+      // Ensure we always return an array
+      return Array.isArray(response.data) ? response.data : [];
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch banks');
     }
@@ -26,7 +27,8 @@ export const fetchPaymentMethods = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get<PaymentMethod[]>('/cards/payment-methods');
-      return response.data;
+      // Ensure we always return an array
+      return Array.isArray(response.data) ? response.data : [];
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch payment methods');
     }

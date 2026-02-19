@@ -115,7 +115,7 @@ export function AddCardModal({ isOpen, onClose, banks, onAdd }: AddCardModalProp
               {cardsLoading ? (
                 <Loading text="Loading cards..." />
               ) : (
-                cards.map((card) => (
+                (Array.isArray(cards) ? cards : []).map((card) => (
                   <button
                     key={card.id}
                     onClick={() => handleCardSelect(card)}
@@ -132,7 +132,7 @@ export function AddCardModal({ isOpen, onClose, banks, onAdd }: AddCardModalProp
                   </button>
                 ))
               )}
-              {!cardsLoading && cards.length === 0 && (
+              {!cardsLoading && (!Array.isArray(cards) || cards.length === 0) && (
                 <p className="text-center text-gray-500 py-8">No cards available</p>
               )}
             </div>

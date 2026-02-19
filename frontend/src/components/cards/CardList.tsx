@@ -10,7 +10,10 @@ interface CardListProps {
 }
 
 export function CardList({ paymentMethods, onEdit, onDelete }: CardListProps) {
-  if (paymentMethods.length === 0) {
+  // Ensure paymentMethods is always an array
+  const methods = Array.isArray(paymentMethods) ? paymentMethods : [];
+
+  if (methods.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
         <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -21,7 +24,7 @@ export function CardList({ paymentMethods, onEdit, onDelete }: CardListProps) {
 
   return (
     <div className="space-y-3">
-      {paymentMethods.map((pm) => (
+      {methods.map((pm) => (
         <PaymentMethodCard
           key={pm.id}
           paymentMethod={pm}

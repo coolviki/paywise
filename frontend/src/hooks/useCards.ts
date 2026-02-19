@@ -73,8 +73,11 @@ export function useBankCards(bankId: string | null) {
       setIsLoading(true);
       try {
         const response = await api.get<BankWithCards>(`/cards/banks/${bankId}`);
-        setCards(response.data.cards);
-      } catch {
+        // Ensure cards is always an array
+        const cardsList = Array.isArray(response.data?.cards) ? response.data.cards : [];
+        setCards(cardsList);
+      } catch (err) {
+        console.error('Error fetching cards:', err);
         setCards([]);
       } finally {
         setIsLoading(false);

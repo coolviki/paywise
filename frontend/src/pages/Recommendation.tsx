@@ -65,7 +65,7 @@ export function Recommendation() {
             )}
 
             {/* Alternatives */}
-            {recommendation.alternatives.length > 0 && (
+            {Array.isArray(recommendation.alternatives) && recommendation.alternatives.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Other Options

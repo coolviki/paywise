@@ -14,15 +14,18 @@ const POPULAR_BANK_CODES = ['hdfc', 'icici', 'sbi', 'axis', 'kotak', 'yes'];
 export function BankSelector({ banks, onSelect }: BankSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const popularBanks = banks.filter((b) =>
+  // Ensure banks is always an array
+  const bankList = Array.isArray(banks) ? banks : [];
+
+  const popularBanks = bankList.filter((b) =>
     POPULAR_BANK_CODES.includes(b.code.toLowerCase())
   );
 
   const filteredBanks = searchQuery
-    ? banks.filter((b) =>
+    ? bankList.filter((b) =>
         b.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : banks;
+    : bankList;
 
   return (
     <div className="space-y-6">
