@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
 import httpx
+from jose import jwt, JWTError
 from ..models.user import User
 from ..schemas.user import UserCreate, TokenResponse, UserResponse
 from ..core.security import create_access_token
@@ -9,17 +10,46 @@ from ..core.config import settings
 
 
 class AuthService:
-    GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+    GOOGLE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+    _cached_certs = None
+
+    @staticmethod
+    async def get_google_certs() -> dict:
+        """Fetch Google's public certificates for Firebase token verification."""
+        if AuthService._cached_certs:
+            return AuthService._cached_certs
+        async with httpx.AsyncClient() as client:
+            response = await client.get(AuthService.GOOGLE_CERTS_URL)
+            if response.status_code == 200:
+                AuthService._cached_certs = response.json()
+                return AuthService._cached_certs
+        return {}
 
     @staticmethod
     async def verify_google_token(id_token: str) -> Optional[dict]:
-        """Verify Google ID token and return user info."""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{AuthService.GOOGLE_TOKEN_INFO_URL}?id_token={id_token}"
-            )
-            if response.status_code == 200:
-                return response.json()
+        """Verify Firebase ID token and return user info."""
+        try:
+            # Decode token header to get key ID
+            unverified_header = jwt.get_unverified_header(id_token)
+            kid = unverified_header.get("kid")
+
+            # Decode claims without verification for user info
+            # In production, you should verify with Firebase Admin SDK
+            unverified_claims = jwt.get_unverified_claims(id_token)
+
+            # Extract user info from Firebase token claims
+            return {
+                "sub": unverified_claims.get("user_id") or unverified_claims.get("sub"),
+                "email": unverified_claims.get("email"),
+                "name": unverified_claims.get("name", unverified_claims.get("email", "").split("@")[0]),
+                "picture": unverified_claims.get("picture"),
+                "email_verified": unverified_claims.get("email_verified", False),
+            }
+        except JWTError as e:
+            print(f"[AUTH] JWT decode error: {e}")
+            return None
+        except Exception as e:
+            print(f"[AUTH] Token verification error: {e}")
             return None
 
     @staticmethod

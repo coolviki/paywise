@@ -6,7 +6,7 @@ const initialState: AuthState = {
   user: null,
   token: localStorage.getItem('token'),
   isAuthenticated: !!localStorage.getItem('token'),
-  isLoading: true,
+  isLoading: !!localStorage.getItem('token'), // Only show loading if we have a token to validate
   error: null,
 };
 
