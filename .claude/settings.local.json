@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(source:*)",
+      "Bash(python -m app.seed_data:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
