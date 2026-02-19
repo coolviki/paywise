@@ -43,8 +43,8 @@ interface PlaceCardProps {
 }
 
 function PlaceCard({ merchant, onSelect }: PlaceCardProps) {
-  const hasLocations = merchant.locations.length > 0;
-  const nearestLocation = merchant.locations[0];
+  const locations = merchant.locations || [];
+  const nearestLocation = locations[0];
 
   return (
     <Card

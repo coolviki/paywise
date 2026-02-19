@@ -60,17 +60,17 @@ export function Search() {
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <p>Start typing to search for merchants</p>
           </div>
-        ) : results.length === 0 ? (
+        ) : !Array.isArray(results) || results.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <p>No results found for "{searchQuery}"</p>
           </div>
         ) : (
           <>
             {/* Near You section */}
-            {results.some((m) => m.locations.some((l) => l.distance_km !== undefined)) && (
+            {results.some((m) => (m.locations || []).some((l) => l.distance_km !== undefined)) && (
               <PlacesList
                 merchants={results.filter((m) =>
-                  m.locations.some((l) => l.distance_km !== undefined)
+                  (m.locations || []).some((l) => l.distance_km !== undefined)
                 )}
                 onSelect={handleMerchantSelect}
                 title="Near You"
@@ -78,11 +78,11 @@ export function Search() {
             )}
 
             {/* All Locations section */}
-            {results.some((m) => m.locations.length === 0 || m.is_chain) && (
+            {results.some((m) => (m.locations || []).length === 0 || m.is_chain) && (
               <div className="mt-6">
                 <PlacesList
                   merchants={results.filter(
-                    (m) => m.locations.length === 0 || m.is_chain
+                    (m) => (m.locations || []).length === 0 || m.is_chain
                   )}
                   onSelect={handleMerchantSelect}
                   title="All Locations"

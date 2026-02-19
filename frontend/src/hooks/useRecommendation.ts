@@ -60,8 +60,11 @@ export function useSearch() {
         if (longitude) params.append('longitude', longitude.toString());
 
         const response = await api.get<Merchant[]>(`/search/merchants?${params}`);
-        setResults(response.data);
-      } catch {
+        // Ensure response.data is an array
+        const data = Array.isArray(response.data) ? response.data : [];
+        setResults(data);
+      } catch (err) {
+        console.error('Search error:', err);
         setResults([]);
       } finally {
         setIsLoading(false);
