@@ -12,7 +12,8 @@ from ..core.config import settings
 
 
 class LocationService:
-    GOOGLE_PLACES_URL = "https://maps.googleapis.com/maps/api/place"
+    # New Places API endpoint
+    GOOGLE_PLACES_URL = "https://places.googleapis.com/v1/places:searchText"
 
     @staticmethod
     def calculate_distance(
@@ -37,27 +38,52 @@ class LocationService:
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
     ) -> List[dict]:
-        """Search for places using Google Places API."""
+        """Search for places using Google Places API (New)."""
         if not settings.google_places_api_key:
             return []
 
-        params = {
-            "query": query,
-            "key": settings.google_places_api_key,
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": settings.google_places_api_key,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types",
+        }
+
+        body = {
+            "textQuery": query,
+            "maxResultCount": 10,
         }
 
         if latitude and longitude:
-            params["location"] = f"{latitude},{longitude}"
-            params["radius"] = "5000"  # 5km radius
+            body["locationBias"] = {
+                "circle": {
+                    "center": {"latitude": latitude, "longitude": longitude},
+                    "radius": 5000.0
+                }
+            }
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{LocationService.GOOGLE_PLACES_URL}/textsearch/json",
-                params=params,
+            response = await client.post(
+                LocationService.GOOGLE_PLACES_URL,
+                headers=headers,
+                json=body,
             )
             if response.status_code == 200:
                 data = response.json()
-                return data.get("results", [])
+                # Transform new API response to match expected format
+                results = []
+                for place in data.get("places", []):
+                    results.append({
+                        "place_id": place.get("id"),
+                        "name": place.get("displayName", {}).get("text"),
+                        "formatted_address": place.get("formattedAddress"),
+                        "geometry": {
+                            "location": place.get("location", {})
+                        },
+                        "types": place.get("types", []),
+                    })
+                return results
+            else:
+                print(f"Places API error: {response.status_code} - {response.text}")
 
         return []
 

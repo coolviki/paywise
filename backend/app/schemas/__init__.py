@@ -11,7 +11,6 @@ from .recommendation import (
     MerchantSearchResult,
     RecommendationRequest,
     RecommendationResponse,
-    OfferResponse,
 )
 
 __all__ = [
@@ -28,5 +27,4 @@ __all__ = [
     "MerchantSearchResult",
     "RecommendationRequest",
     "RecommendationResponse",
-    "OfferResponse",
 ]

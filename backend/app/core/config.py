@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     # Google
     google_places_api_key: Optional[str] = None
 
-    # Anthropic
-    anthropic_api_key: Optional[str] = None
-    llm_model: str = "claude-3-sonnet-20240229"
+    # Gemini
+    gemini_api_key: Optional[str] = None
+    llm_model: str = "gemini-2.5-flash"
 
     # Redis
     redis_url: str = "redis://localhost:6379"

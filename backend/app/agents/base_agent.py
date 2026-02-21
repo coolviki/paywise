@@ -1,15 +1,16 @@
 from typing import Optional
-import anthropic
+import google.generativeai as genai
 from ..core.config import settings
 
 
 class BaseAgent:
-    """Base class for LLM agents."""
+    """Base class for LLM agents using Google Gemini."""
 
     def __init__(self):
         self.client = None
-        if settings.anthropic_api_key:
-            self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        if settings.gemini_api_key:
+            genai.configure(api_key=settings.gemini_api_key)
+            self.client = genai.GenerativeModel(settings.llm_model)
         self.model = settings.llm_model
 
     async def call_llm(
@@ -18,22 +19,26 @@ class BaseAgent:
         system_prompt: Optional[str] = None,
         max_tokens: int = 1024,
     ) -> Optional[str]:
-        """Call the LLM with the given prompt."""
+        """Call the Gemini LLM with the given prompt."""
         if not self.client:
             return None
 
-        messages = [{"role": "user", "content": prompt}]
-
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                system=system_prompt or "",
-                messages=messages,
+            # Combine system prompt and user prompt for Gemini
+            full_prompt = prompt
+            if system_prompt:
+                full_prompt = f"{system_prompt}\n\n{prompt}"
+
+            response = self.client.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=max_tokens,
+                    temperature=0.7,
+                )
             )
 
-            if response.content:
-                return response.content[0].text
+            if response.text:
+                return response.text
 
             return None
 

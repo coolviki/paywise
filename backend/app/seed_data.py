@@ -24,12 +24,12 @@ def seed_banks(db: Session):
         {"name": "IndusInd Bank", "code": "indusind", "logo_url": None},
         {"name": "IDFC First Bank", "code": "idfc", "logo_url": None},
         {"name": "American Express", "code": "amex", "logo_url": None},
-        {"name": "Citibank", "code": "citi", "logo_url": None},
         {"name": "RBL Bank", "code": "rbl", "logo_url": None},
         {"name": "AU Small Finance Bank", "code": "au", "logo_url": None},
         {"name": "Federal Bank", "code": "federal", "logo_url": None},
         {"name": "Bank of Baroda", "code": "bob", "logo_url": None},
         {"name": "Standard Chartered", "code": "sc", "logo_url": None},
+        {"name": "HSBC", "code": "hsbc", "logo_url": None},
     ]
 
     banks = {}
@@ -48,49 +48,188 @@ def seed_banks(db: Session):
 
 
 def seed_cards(db: Session, banks: dict):
-    """Seed cards data."""
+    """Seed cards data - comprehensive list of Indian credit cards."""
     cards_data = [
-        # HDFC Cards
-        {"bank_code": "hdfc", "name": "HDFC Infinia", "card_type": "credit", "card_network": "visa", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 3.3},
-        {"bank_code": "hdfc", "name": "HDFC Regalia", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.0},
-        {"bank_code": "hdfc", "name": "HDFC Diners Club Black", "card_type": "credit", "card_network": "rupay", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 3.3},
-        {"bank_code": "hdfc", "name": "HDFC Millennia", "card_type": "credit", "card_network": "mastercard", "annual_fee": 1000, "reward_type": "cashback", "base_reward_rate": 1.0},
+        # ============================================
+        # HDFC BANK (15 cards)
+        # ============================================
+        {"bank_code": "hdfc", "name": "HDFC Infinia Metal Edition", "card_type": "credit", "card_network": "visa", "annual_fee": 12500, "reward_type": "points", "base_reward_rate": 3.33},
+        {"bank_code": "hdfc", "name": "HDFC Diners Club Black Metal Edition", "card_type": "credit", "card_network": "rupay", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 3.33},
+        {"bank_code": "hdfc", "name": "HDFC Regalia Gold", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
+        {"bank_code": "hdfc", "name": "HDFC Regalia", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
+        {"bank_code": "hdfc", "name": "HDFC Diners ClubMiles", "card_type": "credit", "card_network": "rupay", "annual_fee": 1000, "reward_type": "miles", "base_reward_rate": 2.0},
         {"bank_code": "hdfc", "name": "HDFC MoneyBack+", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 0.5},
+        {"bank_code": "hdfc", "name": "HDFC Millennia", "card_type": "credit", "card_network": "mastercard", "annual_fee": 1000, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "hdfc", "name": "HDFC Freedom", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 0.67},
+        {"bank_code": "hdfc", "name": "Swiggy HDFC Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "hdfc", "name": "6E Rewards XL IndiGo HDFC Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1500, "reward_type": "miles", "base_reward_rate": 1.5},
+        {"bank_code": "hdfc", "name": "Tata Neu HDFC Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "hdfc", "name": "HDFC IndianOil Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "hdfc", "name": "HDFC Shoppers Stop Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "hdfc", "name": "HDFC UPI RuPay Credit Card", "card_type": "credit", "card_network": "rupay", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "hdfc", "name": "HDFC Platinum Times Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1000, "reward_type": "points", "base_reward_rate": 1.5},
 
-        # ICICI Cards
-        {"bank_code": "icici", "name": "ICICI Amazon Pay", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.0},
-        {"bank_code": "icici", "name": "ICICI Sapphiro", "card_type": "credit", "card_network": "visa", "annual_fee": 6500, "reward_type": "points", "base_reward_rate": 2.0},
-        {"bank_code": "icici", "name": "ICICI Coral", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 1.0},
-        {"bank_code": "icici", "name": "ICICI Emeralde", "card_type": "credit", "card_network": "visa", "annual_fee": 12000, "reward_type": "points", "base_reward_rate": 3.0},
+        # ============================================
+        # ICICI BANK (12 cards)
+        # ============================================
+        {"bank_code": "icici", "name": "ICICI Emeralde Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 12000, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "icici", "name": "ICICI Emeralde Private Metal Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 50000, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "icici", "name": "ICICI Sapphiro Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 6500, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "icici", "name": "ICICI Rubyx Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 3000, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "icici", "name": "ICICI Coral Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "icici", "name": "ICICI Platinum Chip Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "icici", "name": "Amazon Pay ICICI Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "icici", "name": "ICICI HPCL Super Saver Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "icici", "name": "MakeMyTrip ICICI Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "icici", "name": "Times Black ICICI Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 20000, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "icici", "name": "ICICI Manchester United Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "icici", "name": "ICICI Ferrari Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1500, "reward_type": "points", "base_reward_rate": 1.5},
 
-        # Axis Cards
-        {"bank_code": "axis", "name": "Axis Flipkart", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.5},
-        {"bank_code": "axis", "name": "Axis Magnus", "card_type": "credit", "card_network": "visa", "annual_fee": 12500, "reward_type": "points", "base_reward_rate": 3.5},
-        {"bank_code": "axis", "name": "Axis Reserve", "card_type": "credit", "card_network": "visa", "annual_fee": 50000, "reward_type": "points", "base_reward_rate": 4.0},
-        {"bank_code": "axis", "name": "Axis Ace", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "cashback", "base_reward_rate": 2.0},
+        # ============================================
+        # SBI CARD (14 cards)
+        # ============================================
+        {"bank_code": "sbi", "name": "SBI Card ELITE", "card_type": "credit", "card_network": "visa", "annual_fee": 4999, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "sbi", "name": "SBI Card PRIME", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "sbi", "name": "SBI Card Pulse", "card_type": "credit", "card_network": "visa", "annual_fee": 1499, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "sbi", "name": "SimplyCLICK SBI Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 0.67},
+        {"bank_code": "sbi", "name": "SimplySAVE SBI Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 0.67},
+        {"bank_code": "sbi", "name": "SBI Cashback Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 999, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "sbi", "name": "IRCTC SBI Card Premier", "card_type": "credit", "card_network": "visa", "annual_fee": 1499, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "sbi", "name": "BPCL Octane SBI Card", "card_type": "credit", "card_network": "rupay", "annual_fee": 1499, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "sbi", "name": "Tata Neu Plus SBI Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "sbi", "name": "Tata Neu Infinity SBI Card", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "sbi", "name": "Reliance SBI Card PRIME", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "sbi", "name": "Club Vistara SBI Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1499, "reward_type": "miles", "base_reward_rate": 2.0},
+        {"bank_code": "sbi", "name": "Air India SBI Platinum Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1499, "reward_type": "miles", "base_reward_rate": 2.0},
+        {"bank_code": "sbi", "name": "Fabindia SBI Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 1.5},
 
-        # SBI Cards
-        {"bank_code": "sbi", "name": "SBI Elite", "card_type": "credit", "card_network": "visa", "annual_fee": 4999, "reward_type": "points", "base_reward_rate": 2.0},
-        {"bank_code": "sbi", "name": "SBI Prime", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 1.5},
-        {"bank_code": "sbi", "name": "SBI SimplySAVE", "card_type": "credit", "card_network": "mastercard", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 1.0},
-        {"bank_code": "sbi", "name": "SBI BPCL Octane", "card_type": "credit", "card_network": "rupay", "annual_fee": 1499, "reward_type": "cashback", "base_reward_rate": 1.0},
+        # ============================================
+        # AXIS BANK (12 cards)
+        # ============================================
+        {"bank_code": "axis", "name": "Axis Bank Magnus Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 12500, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "axis", "name": "Axis Bank Reserve Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 50000, "reward_type": "points", "base_reward_rate": 3.5},
+        {"bank_code": "axis", "name": "Axis Bank Atlas Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 5000, "reward_type": "miles", "base_reward_rate": 2.5},
+        {"bank_code": "axis", "name": "Axis Bank Signature Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 3000, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "axis", "name": "Axis Bank Rewards Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1000, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "axis", "name": "Axis Bank ACE Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "cashback", "base_reward_rate": 2.0},
+        {"bank_code": "axis", "name": "Flipkart Axis Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "axis", "name": "Axis Bank MY Zone Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "axis", "name": "Axis Bank Neo Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 250, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "axis", "name": "Axis Bank Select Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "axis", "name": "Fibe Axis Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 3.0},
+        {"bank_code": "axis", "name": "Airtel Axis Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.0},
 
-        # Kotak Cards
-        {"bank_code": "kotak", "name": "Kotak 811 Dream", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.0},
-        {"bank_code": "kotak", "name": "Kotak Royale Signature", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 2.0},
+        # ============================================
+        # KOTAK MAHINDRA BANK (10 cards)
+        # ============================================
+        {"bank_code": "kotak", "name": "Kotak Privy League Signature Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 12500, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "kotak", "name": "Kotak Zen Signature Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1500, "reward_type": "points", "base_reward_rate": 1.67},
+        {"bank_code": "kotak", "name": "Kotak Royale Signature Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 999, "reward_type": "points", "base_reward_rate": 1.33},
+        {"bank_code": "kotak", "name": "Kotak Delight Platinum Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "kotak", "name": "PVR Kotak Platinum Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 750, "reward_type": "cashback", "base_reward_rate": 1.5},
+        {"bank_code": "kotak", "name": "Kotak Urbane Gold Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 199, "reward_type": "points", "base_reward_rate": 0.67},
+        {"bank_code": "kotak", "name": "Kotak 811 Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "kotak", "name": "IndiGo Kotak Platinum Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1499, "reward_type": "miles", "base_reward_rate": 2.0},
+        {"bank_code": "kotak", "name": "IndiGo Kotak Ka-ching 6E Rewards Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "miles", "base_reward_rate": 2.5},
+        {"bank_code": "kotak", "name": "Kotak Fortune Gold Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 299, "reward_type": "points", "base_reward_rate": 0.5},
 
-        # IDFC Cards
-        {"bank_code": "idfc", "name": "IDFC First Select", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 3.0},
-        {"bank_code": "idfc", "name": "IDFC First Millennia", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 2.5},
+        # ============================================
+        # IDFC FIRST BANK (8 cards)
+        # ============================================
+        {"bank_code": "idfc", "name": "IDFC FIRST Wealth Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.67},
+        {"bank_code": "idfc", "name": "IDFC FIRST Select Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.67},
+        {"bank_code": "idfc", "name": "IDFC FIRST Classic Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 0.5},
+        {"bank_code": "idfc", "name": "IDFC FIRST Millennia Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 0.5},
+        {"bank_code": "idfc", "name": "IDFC FIRST WOW Credit Card", "card_type": "credit", "card_network": "rupay", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 0.5},
+        {"bank_code": "idfc", "name": "IDFC FIRST SWYP Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "idfc", "name": "IDFC FIRST Power+ Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "idfc", "name": "Club Vistara IDFC FIRST Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "miles", "base_reward_rate": 2.0},
 
-        # Amex Cards
-        {"bank_code": "amex", "name": "Amex Platinum", "card_type": "credit", "card_network": "amex", "annual_fee": 60000, "reward_type": "points", "base_reward_rate": 5.0},
-        {"bank_code": "amex", "name": "Amex Gold", "card_type": "credit", "card_network": "amex", "annual_fee": 9000, "reward_type": "points", "base_reward_rate": 2.0},
-        {"bank_code": "amex", "name": "Amex SmartEarn", "card_type": "credit", "card_network": "amex", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        # ============================================
+        # AMERICAN EXPRESS (7 cards)
+        # ============================================
+        {"bank_code": "amex", "name": "American Express Platinum Charge Card", "card_type": "credit", "card_network": "amex", "annual_fee": 66000, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "amex", "name": "American Express Platinum Reserve Credit Card", "card_type": "credit", "card_network": "amex", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "amex", "name": "American Express Platinum Travel Credit Card", "card_type": "credit", "card_network": "amex", "annual_fee": 5000, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "amex", "name": "American Express Gold Card", "card_type": "credit", "card_network": "amex", "annual_fee": 9000, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "amex", "name": "American Express Membership Rewards Credit Card", "card_type": "credit", "card_network": "amex", "annual_fee": 4500, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "amex", "name": "American Express SmartEarn Credit Card", "card_type": "credit", "card_network": "amex", "annual_fee": 495, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "amex", "name": "American Express PAYBACK Credit Card", "card_type": "credit", "card_network": "amex", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
 
-        # Standard Chartered Cards
-        {"bank_code": "sc", "name": "SC Ultimate", "card_type": "credit", "card_network": "visa", "annual_fee": 5000, "reward_type": "points", "base_reward_rate": 3.3},
-        {"bank_code": "sc", "name": "SC Manhattan", "card_type": "credit", "card_network": "visa", "annual_fee": 999, "reward_type": "cashback", "base_reward_rate": 1.5},
+        # ============================================
+        # STANDARD CHARTERED (7 cards)
+        # ============================================
+        {"bank_code": "sc", "name": "Standard Chartered Ultimate Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 5000, "reward_type": "points", "base_reward_rate": 3.33},
+        {"bank_code": "sc", "name": "Standard Chartered EaseMyTrip Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "sc", "name": "Standard Chartered Rewards Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1000, "reward_type": "points", "base_reward_rate": 2.67},
+        {"bank_code": "sc", "name": "Standard Chartered Platinum Rewards Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 0.67},
+        {"bank_code": "sc", "name": "Standard Chartered Smart Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "sc", "name": "Standard Chartered DigiSmart Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.5},
+        {"bank_code": "sc", "name": "Standard Chartered Super Value Titanium Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 750, "reward_type": "cashback", "base_reward_rate": 1.5},
+
+        # ============================================
+        # YES BANK (7 cards)
+        # ============================================
+        {"bank_code": "yes", "name": "YES Private Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "yes", "name": "YES RESERV Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "yes", "name": "YES Bank ELITE+ Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 999, "reward_type": "points", "base_reward_rate": 3.0},
+        {"bank_code": "yes", "name": "YES First Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1200, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "yes", "name": "YES Bank ACE Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1499, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "yes", "name": "YES Bank Rio Credit Card", "card_type": "credit", "card_network": "rupay", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "yes", "name": "YES Bank Klick RuPay Credit Card", "card_type": "credit", "card_network": "rupay", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.0},
+
+        # ============================================
+        # INDUSIND BANK (8 cards)
+        # ============================================
+        {"bank_code": "indusind", "name": "IndusInd Avios Visa Infinite Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 10000, "reward_type": "miles", "base_reward_rate": 3.0},
+        {"bank_code": "indusind", "name": "IndusInd Pinnacle World Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 2.5},
+        {"bank_code": "indusind", "name": "IndusInd Legend Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "indusind", "name": "IndusInd Tiger Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "indusind", "name": "IndusInd Platinum Aura Edge Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "indusind", "name": "EazyDiner IndusInd Bank Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 1999, "reward_type": "cashback", "base_reward_rate": 2.0},
+        {"bank_code": "indusind", "name": "IndusInd Nexxt Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 0.67},
+        {"bank_code": "indusind", "name": "British Airways IndusInd Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 3000, "reward_type": "miles", "base_reward_rate": 2.0},
+
+        # ============================================
+        # RBL BANK (7 cards)
+        # ============================================
+        {"bank_code": "rbl", "name": "RBL Insignia Preferred Banking World Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "rbl", "name": "RBL Platinum Maxima Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 2000, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "rbl", "name": "RBL Platinum Delight Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1000, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "rbl", "name": "RBL Titanium Delight Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 750, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "rbl", "name": "RBL ShopRite Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "rbl", "name": "IndianOil RBL Bank Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "rbl", "name": "Practo Plus RBL Bank Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.0},
+
+        # ============================================
+        # AU SMALL FINANCE BANK (7 cards)
+        # ============================================
+        {"bank_code": "au", "name": "AU Bank Zenith Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 7999, "reward_type": "points", "base_reward_rate": 5.0},
+        {"bank_code": "au", "name": "AU Bank Vetta Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "au", "name": "AU Bank Altura Plus Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "au", "name": "AU Bank Altura Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 199, "reward_type": "points", "base_reward_rate": 0.5},
+        {"bank_code": "au", "name": "AU Bank LIT Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "au", "name": "Ixigo AU Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.25},
+        {"bank_code": "au", "name": "AU Bank SwipeUp Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 199, "reward_type": "cashback", "base_reward_rate": 1.0},
+
+        # ============================================
+        # FEDERAL BANK (5 cards)
+        # ============================================
+        {"bank_code": "federal", "name": "Federal Bank Visa Celesta Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "federal", "name": "Federal Bank Mastercard Celesta Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "federal", "name": "Federal Bank Visa Signet Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 1.5},
+        {"bank_code": "federal", "name": "Scapia Federal Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "federal", "name": "OneCard Federal Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 1.0},
+
+        # ============================================
+        # HSBC INDIA (6 cards)
+        # ============================================
+        {"bank_code": "hsbc", "name": "HSBC Prive Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 4.0},
+        {"bank_code": "hsbc", "name": "HSBC Premier Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 20000, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "hsbc", "name": "HSBC TravelOne Credit Card", "card_type": "credit", "card_network": "mastercard", "annual_fee": 4999, "reward_type": "miles", "base_reward_rate": 4.0},
+        {"bank_code": "hsbc", "name": "HSBC Live+ Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 999, "reward_type": "cashback", "base_reward_rate": 2.5},
+        {"bank_code": "hsbc", "name": "HSBC Visa Platinum Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
+        {"bank_code": "hsbc", "name": "HSBC Cashback Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 750, "reward_type": "cashback", "base_reward_rate": 1.5},
     ]
 
     cards = {}
