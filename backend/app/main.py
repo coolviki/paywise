@@ -21,7 +21,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://*.railway.app",
+        "https://blissful-charisma-production.up.railway.app",
+        "https://paywise-production-35a1.up.railway.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
