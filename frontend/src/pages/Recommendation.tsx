@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { RecommendationCard } from '../components/recommendation/RecommendationCard';
 import { AIInsight } from '../components/recommendation/AIInsight';
@@ -7,18 +7,22 @@ import { Loading } from '../components/common/Loading';
 import { useRecommendation } from '../hooks/useRecommendation';
 
 export function Recommendation() {
-  const { merchantId } = useParams<{ merchantId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const locationId = searchParams.get('location') || undefined;
+
+  // Get place info from URL params
+  const placeName = searchParams.get('name') || '';
+  const placeCategory = searchParams.get('category') || undefined;
+  const placeAddress = searchParams.get('address') || undefined;
+  const placeId = searchParams.get('placeId') || undefined;
 
   const { recommendation, isLoading, error, getRecommendation } = useRecommendation();
 
   useEffect(() => {
-    if (merchantId) {
-      getRecommendation(merchantId, locationId);
+    if (placeName) {
+      getRecommendation(placeName, placeCategory, placeAddress, placeId);
     }
-  }, [merchantId, locationId, getRecommendation]);
+  }, [placeName, placeCategory, placeAddress, placeId, getRecommendation]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -31,9 +35,14 @@ export function Recommendation() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {recommendation?.merchant_name || 'Loading...'}
-          </h1>
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {recommendation?.place_name || placeName || 'Loading...'}
+            </h1>
+            {(recommendation?.place_category || placeCategory) && (
+              <p className="text-sm text-gray-500">{recommendation?.place_category || placeCategory}</p>
+            )}
+          </div>
         </div>
       </div>
 

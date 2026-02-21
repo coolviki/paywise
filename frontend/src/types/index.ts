@@ -81,13 +81,12 @@ export interface CardRecommendation {
   bank_name: string;
   estimated_savings: string;
   reason: string;
-  offer?: Offer;
+  offers: string[];  // List of offer descriptions from LLM
 }
 
 export interface Recommendation {
-  merchant_id: string;
-  merchant_name: string;
-  category?: string;
+  place_name: string;
+  place_category?: string;
   best_option: CardRecommendation;
   alternatives: CardRecommendation[];
   ai_insight?: string;

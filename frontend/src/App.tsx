@@ -67,7 +67,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/recommendation/:merchantId"
+        path="/recommendation"
         element={
           <ProtectedRoute>
             <Recommendation />

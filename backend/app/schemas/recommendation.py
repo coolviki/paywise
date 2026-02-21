@@ -13,7 +13,7 @@ class SearchQuery(BaseModel):
 
 
 class MerchantLocationResult(BaseModel):
-    id: UUID
+    id: str  # Changed to string for Google Places IDs
     address: Optional[str] = None
     city: Optional[str] = None
     distance_km: Optional[float] = None
@@ -24,11 +24,11 @@ class MerchantLocationResult(BaseModel):
 
 
 class MerchantSearchResult(BaseModel):
-    id: UUID
+    id: str  # Changed to string for Google Places IDs
     name: str
     category: Optional[str] = None
     logo_url: Optional[str] = None
-    is_chain: bool
+    is_chain: bool = False
     locations: List[MerchantLocationResult] = []
     offer_count: int = 0
 
@@ -36,42 +36,28 @@ class MerchantSearchResult(BaseModel):
         from_attributes = True
 
 
-class OfferResponse(BaseModel):
-    id: UUID
-    card_id: Optional[UUID] = None
-    card_name: Optional[str] = None
-    bank_name: Optional[str] = None
-    title: str
-    description: Optional[str] = None
-    discount_type: str
-    discount_value: Decimal
-    min_transaction: Optional[Decimal] = None
-    max_discount: Optional[Decimal] = None
-    valid_until: Optional[date] = None
-
-    class Config:
-        from_attributes = True
-
-
+# New simplified request - takes place name instead of merchant_id
 class RecommendationRequest(BaseModel):
-    merchant_id: UUID
-    location_id: Optional[UUID] = None
+    place_name: str
+    place_id: Optional[str] = None  # Google Places ID
+    place_category: Optional[str] = None
+    place_address: Optional[str] = None
     transaction_amount: Optional[Decimal] = None
 
 
+# Simplified card recommendation
 class CardRecommendation(BaseModel):
     card_id: UUID
     card_name: str
     bank_name: str
     estimated_savings: str
     reason: str
-    offer: Optional[OfferResponse] = None
+    offers: List[str] = []  # List of offer descriptions from LLM
 
 
 class RecommendationResponse(BaseModel):
-    merchant_id: UUID
-    merchant_name: str
-    category: Optional[str] = None
+    place_name: str
+    place_category: Optional[str] = None
     best_option: CardRecommendation
     alternatives: List[CardRecommendation] = []
     ai_insight: Optional[str] = None

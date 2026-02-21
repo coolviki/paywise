@@ -1,5 +1,4 @@
-import React from 'react';
-import { CreditCard, Check, Calendar, Receipt } from 'lucide-react';
+import { CreditCard, Check } from 'lucide-react';
 import { Card, CardContent } from '../common/Card';
 import { CardRecommendation } from '../../types';
 
@@ -9,6 +8,8 @@ interface RecommendationCardProps {
 }
 
 export function RecommendationCard({ recommendation, isBest = false }: RecommendationCardProps) {
+  const offers = Array.isArray(recommendation.offers) ? recommendation.offers : [];
+
   return (
     <Card
       className={`overflow-hidden ${
@@ -53,24 +54,14 @@ export function RecommendationCard({ recommendation, isBest = false }: Recommend
                 {recommendation.reason}
               </p>
 
-              {recommendation.offer && (
+              {offers.length > 0 && (
                 <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-accent-500" />
-                    <span>{recommendation.offer.title}</span>
-                  </div>
-                  {recommendation.offer.min_transaction && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Receipt className="w-4 h-4" />
-                      <span>Min transaction: Rs.{recommendation.offer.min_transaction}</span>
+                  {offers.map((offer, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4 text-accent-500 flex-shrink-0" />
+                      <span>{offer}</span>
                     </div>
-                  )}
-                  {recommendation.offer.valid_until && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Calendar className="w-4 h-4" />
-                      <span>Valid till {recommendation.offer.valid_until}</span>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>

@@ -45,8 +45,14 @@ export function Home() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, location, search, searchNearby]);
 
-  const handleMerchantSelect = (merchant: Merchant, locationId?: string) => {
-    navigate(`/recommendation/${merchant.id}${locationId ? `?location=${locationId}` : ''}`);
+  const handleMerchantSelect = (merchant: Merchant) => {
+    const params = new URLSearchParams({
+      name: merchant.name,
+      placeId: merchant.id,
+    });
+    if (merchant.category) params.append('category', merchant.category);
+    if (merchant.locations?.[0]?.address) params.append('address', merchant.locations[0].address);
+    navigate(`/recommendation?${params.toString()}`);
   };
 
   return (
