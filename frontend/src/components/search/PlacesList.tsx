@@ -60,16 +60,21 @@ function PlaceCard({ merchant, onSelect }: PlaceCardProps) {
           <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-xl">
             {getCategoryEmoji(merchant.category)}
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900 dark:text-white">{merchant.name}</p>
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            {nearestLocation?.address && (
+              <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
+                {nearestLocation.address.split(',')[0]}
+              </p>
+            )}
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               {nearestLocation?.distance_km !== undefined && (
                 <span>{locationService.formatDistance(nearestLocation.distance_km)}</span>
               )}
               {nearestLocation?.distance_km !== undefined && merchant.category && (
-                <span>-</span>
+                <span>•</span>
               )}
-              {merchant.category && <span>{merchant.category}</span>}
+              {merchant.category && <span>{formatCategory(merchant.category)}</span>}
             </div>
           </div>
         </div>
@@ -85,6 +90,15 @@ function PlaceCard({ merchant, onSelect }: PlaceCardProps) {
       </div>
     </Card>
   );
+}
+
+function formatCategory(category?: string): string {
+  if (!category) return '';
+  // Convert "japanese_restaurant" to "Japanese Restaurant"
+  return category
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 function getCategoryEmoji(category?: string): string {
