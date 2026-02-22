@@ -77,7 +77,7 @@ export function useSearch() {
           id: place.place_id,
           name: place.name,
           category: place.types?.[0] || 'Other',
-          logo_url: null,
+          logo_url: undefined,
           is_chain: false,
           locations: place.address ? [{
             id: place.place_id,
@@ -120,7 +120,7 @@ export function useSearch() {
           id: place.place_id,
           name: place.name,
           category: place.types?.[0] || 'Other',
-          logo_url: null,
+          logo_url: undefined,
           is_chain: false,
           locations: place.address ? [{
             id: place.place_id,
