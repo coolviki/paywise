@@ -7,7 +7,41 @@ from ..models.card import PaymentMethod
 class RecommendationAgent(BaseAgent):
     """Agent for generating payment recommendations using LLM."""
 
-    SYSTEM_PROMPT = """You are PayWise. Help users pick the best credit card for purchases in India. Be very concise. Return valid JSON only."""
+    SYSTEM_PROMPT = """PayWise: India credit card expert. Category offers: DINING(Diners 5x,Elite 2x), FUEL(IndianOil 5%,BPCL 7%), GROCERY(Amazon 2%,Millennia 2.5%), SHOPPING(Flipkart 5%,Regalia 4x). JSON only, be brief."""
+
+    # Category mapping for better context
+    CATEGORY_HINTS = {
+        "restaurant": "dining",
+        "cafe": "dining",
+        "bar": "dining",
+        "food": "dining",
+        "bakery": "dining",
+        "gas_station": "fuel",
+        "fuel": "fuel",
+        "petrol": "fuel",
+        "grocery": "grocery",
+        "supermarket": "grocery",
+        "store": "shopping",
+        "mall": "shopping",
+        "shopping": "shopping",
+        "clothing": "shopping",
+        "electronics": "shopping",
+        "airport": "travel",
+        "hotel": "travel",
+        "travel": "travel",
+        "airline": "travel",
+    }
+
+    @staticmethod
+    def get_category_type(place_category: Optional[str]) -> str:
+        """Map Google Places category to reward category."""
+        if not place_category:
+            return "general"
+        cat_lower = place_category.lower()
+        for keyword, category_type in RecommendationAgent.CATEGORY_HINTS.items():
+            if keyword in cat_lower:
+                return category_type
+        return "general"
 
     @staticmethod
     async def get_recommendation(
@@ -40,11 +74,12 @@ class RecommendationAgent(BaseAgent):
             return None
 
         amount_str = f"Rs.{transaction_amount:.0f}" if transaction_amount else "a typical purchase"
+        category_type = RecommendationAgent.get_category_type(place_category)
 
-        prompt = f"""Best card for {place_name} ({place_category or 'retail'}), {amount_str}?
-Cards: {json.dumps(cards_info)}
-JSON response (keep reason under 20 words):
-{{"best_card":{{"card_id":"id","estimated_savings":"Rs.X","reason":"brief why","offers":[]}},"alternatives":[],"insight":"short tip"}}"""
+        prompt = f"""{category_type.upper()}: {place_name}, {amount_str}
+Cards:{json.dumps(cards_info)}
+Reply with ONLY this JSON (no offers array, keep reason under 10 words):
+{{"best_card":{{"card_id":"id","estimated_savings":"Rs.X","reason":"short {category_type} reason"}},"insight":"tip"}}"""
 
         try:
             response = await agent.call_llm(prompt, system_prompt=RecommendationAgent.SYSTEM_PROMPT)
