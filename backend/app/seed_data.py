@@ -118,6 +118,7 @@ def seed_cards(db: Session, banks: dict):
         {"bank_code": "axis", "name": "Axis Bank Select Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "points", "base_reward_rate": 1.0},
         {"bank_code": "axis", "name": "Fibe Axis Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 0, "reward_type": "cashback", "base_reward_rate": 3.0},
         {"bank_code": "axis", "name": "Airtel Axis Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 1.0},
+        {"bank_code": "axis", "name": "Axis Bank Indian Oil Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "points", "base_reward_rate": 4.0},
 
         # ============================================
         # KOTAK MAHINDRA BANK (10 cards)
