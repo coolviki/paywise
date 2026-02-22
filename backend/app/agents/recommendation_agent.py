@@ -50,6 +50,7 @@ JSON response (keep reason under 20 words):
             response = await agent.call_llm(prompt, system_prompt=RecommendationAgent.SYSTEM_PROMPT)
 
             if not response:
+                print("LLM returned empty response")
                 return None
 
             # Try to parse JSON from response
@@ -61,13 +62,35 @@ JSON response (keep reason under 20 words):
                 response = response[3:]
             if response.endswith("```"):
                 response = response[:-3]
+            response = response.strip()
 
-            result = json.loads(response.strip())
-            return result
+            # Try to fix truncated JSON by adding closing braces
+            try:
+                result = json.loads(response)
+                return result
+            except json.JSONDecodeError:
+                # Try to fix truncated JSON
+                fixed = response
+                # Count open/close braces
+                open_braces = fixed.count('{') - fixed.count('}')
+                open_brackets = fixed.count('[') - fixed.count(']')
 
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse LLM response as JSON: {e}")
-            return None
+                # Add missing closing brackets/braces
+                fixed += ']' * open_brackets
+                fixed += '}' * open_braces
+
+                # Remove trailing comma before closing brace
+                fixed = fixed.replace(',]', ']').replace(',}', '}')
+
+                try:
+                    result = json.loads(fixed)
+                    print(f"Fixed truncated JSON successfully")
+                    return result
+                except json.JSONDecodeError as e:
+                    print(f"Failed to parse LLM response as JSON: {e}")
+                    print(f"Raw response: {response[:200]}...")
+                    return None
+
         except Exception as e:
             print(f"LLM recommendation failed: {e}")
             return None
