@@ -17,7 +17,7 @@ class BaseAgent:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        max_tokens: int = 1024,
+        max_tokens: int = 2048,
     ) -> Optional[str]:
         """Call the Gemini LLM with the given prompt."""
         if not self.client:

@@ -7,23 +7,7 @@ from ..models.card import PaymentMethod
 class RecommendationAgent(BaseAgent):
     """Agent for generating payment recommendations using LLM."""
 
-    SYSTEM_PROMPT = """You are PayWise, an AI assistant that helps users in India choose the best payment method for their purchases.
-
-You have knowledge of current credit card offers, cashback deals, and reward programs from major Indian banks including:
-- HDFC Bank (Regalia, Diners Club, Infinia, etc.)
-- ICICI Bank (Amazon Pay, Coral, Sapphiro, etc.)
-- SBI Cards (SimplyCLICK, Prime, Elite, etc.)
-- Axis Bank (Flipkart, Magnus, Vistara, etc.)
-- Kotak Bank, Yes Bank, IndusInd Bank, IDFC First Bank, American Express, etc.
-
-When recommending a card, consider:
-1. Current offers and promotions at the merchant
-2. Category-specific rewards (dining, groceries, fuel, travel, etc.)
-3. Bank partnerships with the merchant
-4. Cashback rates and reward point values
-5. Milestone benefits and accelerated rewards
-
-Always respond in the exact JSON format requested."""
+    SYSTEM_PROMPT = """You are PayWise. Help users pick the best credit card for purchases in India. Be very concise. Return valid JSON only."""
 
     @staticmethod
     async def get_recommendation(
@@ -57,31 +41,10 @@ Always respond in the exact JSON format requested."""
 
         amount_str = f"Rs.{transaction_amount:.0f}" if transaction_amount else "a typical purchase"
 
-        prompt = f"""Analyze the best payment card to use at "{place_name}" ({place_category or 'retail'}) for {amount_str}.
-
-User's available cards:
-{json.dumps(cards_info, indent=2)}
-
-Respond with a JSON object in this exact format:
-{{
-    "best_card": {{
-        "card_id": "<id of the best card>",
-        "estimated_savings": "<e.g., 'Rs.150' or '5% cashback'>",
-        "reason": "<brief reason why this card is best>",
-        "offers": ["<list of current offers/deals applicable>"]
-    }},
-    "alternatives": [
-        {{
-            "card_id": "<id>",
-            "estimated_savings": "<savings>",
-            "reason": "<reason>",
-            "offers": []
-        }}
-    ],
-    "insight": "<1-2 sentence personalized tip for maximizing savings>"
-}}
-
-Consider current bank offers, category rewards, and partnerships. Provide realistic savings estimates based on typical offers in India."""
+        prompt = f"""Best card for {place_name} ({place_category or 'retail'}), {amount_str}?
+Cards: {json.dumps(cards_info)}
+JSON response (keep reason under 20 words):
+{{"best_card":{{"card_id":"id","estimated_savings":"Rs.X","reason":"brief why","offers":[]}},"alternatives":[],"insight":"short tip"}}"""
 
         try:
             response = await agent.call_llm(prompt, system_prompt=RecommendationAgent.SYSTEM_PROMPT)
