@@ -51,9 +51,10 @@ def seed_cards(db: Session, banks: dict):
     """Seed cards data - comprehensive list of Indian credit cards."""
     cards_data = [
         # ============================================
-        # HDFC BANK (16 cards)
+        # HDFC BANK (17 cards)
         # ============================================
         {"bank_code": "hdfc", "name": "HDFC Infinia Metal Edition", "card_type": "credit", "card_network": "visa", "annual_fee": 12500, "reward_type": "points", "base_reward_rate": 3.33},
+        {"bank_code": "hdfc", "name": "Paytm HDFC Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "cashback", "base_reward_rate": 1.0},
         {"bank_code": "hdfc", "name": "HDFC Diners Club Black Metal Edition", "card_type": "credit", "card_network": "rupay", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 3.33},
         {"bank_code": "hdfc", "name": "HDFC Diners Club Privilege", "card_type": "credit", "card_network": "rupay", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
         {"bank_code": "hdfc", "name": "HDFC Regalia Gold", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
@@ -425,7 +426,9 @@ def seed_brands(db: Session, cards: dict):
     """Seed brand ecosystem data — brands, keywords, and card ecosystem benefits."""
 
     # ------------------------------------------------------------------ brands
+    # See docs/ECOSYSTEM_BENEFITS.md for documentation on adding new brands
     brands_data = [
+        # E-Commerce
         {
             "name": "Tata Group",
             "code": "tata",
@@ -434,7 +437,8 @@ def seed_brands(db: Session, cards: dict):
                 "westside", "croma", "bigbasket", "big basket",
                 "zudio", "star bazaar", "tata cliq", "tata 1mg",
                 "air asia india", "vistara", "taj hotels", "taj",
-                "tata motors", "tata sky", "tatasky",
+                "tata motors", "tata sky", "tatasky", "tanishq",
+                "titan", "starbucks", "tata starbucks",
             ],
         },
         {
@@ -447,14 +451,31 @@ def seed_brands(db: Session, cards: dict):
             "name": "Amazon",
             "code": "amazon",
             "description": "Amazon India marketplace and properties",
-            "keywords": ["amazon", "prime video", "amazon fresh"],
+            "keywords": ["amazon", "prime video", "amazon fresh", "amazon pay"],
         },
+        {
+            "name": "Reliance Retail",
+            "code": "reliance",
+            "description": "Reliance Retail properties",
+            "keywords": [
+                "reliance", "jiomart", "ajio", "reliance digital",
+                "reliance trends", "netmeds", "reliance fresh",
+            ],
+        },
+        # Food Delivery
         {
             "name": "Swiggy",
             "code": "swiggy",
             "description": "Swiggy food delivery and Instamart",
-            "keywords": ["swiggy", "instamart"],
+            "keywords": ["swiggy", "instamart", "swiggy dineout", "swiggy genie"],
         },
+        {
+            "name": "Zomato",
+            "code": "zomato",
+            "description": "Zomato food delivery and Blinkit",
+            "keywords": ["zomato", "blinkit", "zomato gold"],
+        },
+        # Fuel
         {
             "name": "Indian Oil",
             "code": "indianoil",
@@ -464,14 +485,79 @@ def seed_brands(db: Session, cards: dict):
         {
             "name": "Bharat Petroleum",
             "code": "bpcl",
-            "description": "Bharat Petroleum fuel stations",
+            "description": "BPCL and HP fuel stations",
             "keywords": ["bharat petroleum", "bpcl", "hp petrol", "hindustan petroleum", "hpcl"],
         },
+        # Travel
+        {
+            "name": "MakeMyTrip",
+            "code": "makemytrip",
+            "description": "MakeMyTrip travel bookings",
+            "keywords": ["makemytrip", "mmt", "goibibo"],
+        },
+        {
+            "name": "Air India",
+            "code": "airindia",
+            "description": "Air India airlines",
+            "keywords": ["air india", "airindia", "maharaja"],
+        },
+        {
+            "name": "IndiGo",
+            "code": "indigo",
+            "description": "IndiGo airlines",
+            "keywords": ["indigo", "6e"],
+        },
+        {
+            "name": "EaseMyTrip",
+            "code": "easemytrip",
+            "description": "EaseMyTrip travel bookings",
+            "keywords": ["easemytrip", "ease my trip"],
+        },
+        {
+            "name": "ixigo",
+            "code": "ixigo",
+            "description": "ixigo travel platform",
+            "keywords": ["ixigo", "confirmtkt", "abhibus"],
+        },
+        # Ride-hailing
         {
             "name": "Ola",
             "code": "ola",
             "description": "Ola cabs and Ola Electric",
             "keywords": ["ola", "ola cabs", "ola electric", "ola money"],
+        },
+        {
+            "name": "Uber",
+            "code": "uber",
+            "description": "Uber ride-hailing",
+            "keywords": ["uber", "uber eats"],
+        },
+        # Retail
+        {
+            "name": "Shoppers Stop",
+            "code": "shoppersstop",
+            "description": "Shoppers Stop retail",
+            "keywords": ["shoppers stop", "shoppersstop"],
+        },
+        # Entertainment
+        {
+            "name": "PVR INOX",
+            "code": "pvrinox",
+            "description": "PVR INOX cinemas",
+            "keywords": ["pvr", "inox", "pvr inox", "pvr cinemas"],
+        },
+        {
+            "name": "BookMyShow",
+            "code": "bookmyshow",
+            "description": "BookMyShow entertainment ticketing",
+            "keywords": ["bookmyshow", "book my show", "bms"],
+        },
+        # Payments
+        {
+            "name": "Paytm",
+            "code": "paytm",
+            "description": "Paytm payments and commerce",
+            "keywords": ["paytm", "paytm mall", "paytm money"],
         },
     ]
 
@@ -496,15 +582,16 @@ def seed_brands(db: Session, cards: dict):
     db.commit()
 
     # ------------------------------------------------- card ecosystem benefits
+    # See docs/ECOSYSTEM_BENEFITS.md for documentation on adding new benefits
     benefits_data = [
-        # Tata Neu cards → Tata Group (5% NeuCoins for Plus/HDFC, 10% for Infinity)
+        # ========== TATA GROUP ==========
         {
             "card_name": "Tata Neu HDFC Bank Credit Card",
             "bank_code": "hdfc",
             "brand_code": "tata",
             "benefit_rate": 5.0,
             "benefit_type": "neucoins",
-            "description": "5% NeuCoins on all Tata Group properties (Westside, Croma, BigBasket, Zudio, etc.)",
+            "description": "5% NeuCoins on Tata properties (Westside, Croma, BigBasket, Taj, Tanishq)",
         },
         {
             "card_name": "Tata Neu Plus SBI Card",
@@ -520,45 +607,65 @@ def seed_brands(db: Session, cards: dict):
             "brand_code": "tata",
             "benefit_rate": 10.0,
             "benefit_type": "neucoins",
-            "description": "10% NeuCoins on all Tata Group properties (Infinity tier)",
+            "description": "10% NeuCoins on Tata properties (Infinity tier)",
         },
-        # Flipkart Axis → Flipkart ecosystem
+        # ========== E-COMMERCE ==========
+        # Flipkart
         {
             "card_name": "Flipkart Axis Bank Credit Card",
             "bank_code": "axis",
             "brand_code": "flipkart",
             "benefit_rate": 5.0,
             "benefit_type": "cashback",
-            "description": "5% unlimited cashback on Flipkart and Myntra",
+            "description": "5% cashback on Flipkart, 7.5% on Myntra",
         },
-        # Amazon Pay ICICI → Amazon ecosystem
+        # Amazon
         {
             "card_name": "Amazon Pay ICICI Bank Credit Card",
             "bank_code": "icici",
             "brand_code": "amazon",
             "benefit_rate": 5.0,
             "benefit_type": "cashback",
-            "description": "5% cashback on Amazon for Prime members",
+            "description": "5% cashback on Amazon (Prime), 3% (non-Prime)",
         },
-        # Swiggy HDFC → Swiggy ecosystem
+        # Reliance
+        {
+            "card_name": "Reliance SBI Card PRIME",
+            "bank_code": "sbi",
+            "brand_code": "reliance",
+            "benefit_rate": 10.0,
+            "benefit_type": "points",
+            "description": "10 points per Rs 100 on Ajio & JioMart",
+        },
+        # ========== FOOD DELIVERY ==========
+        # Swiggy
         {
             "card_name": "Swiggy HDFC Bank Credit Card",
             "bank_code": "hdfc",
             "brand_code": "swiggy",
             "benefit_rate": 10.0,
             "benefit_type": "cashback",
-            "description": "10% cashback on Swiggy orders",
+            "description": "10% cashback on Swiggy (capped Rs 1,500/cycle)",
         },
-        # HDFC IndianOil → Indian Oil
+        # Flipkart Axis also gives 4% on Swiggy
+        {
+            "card_name": "Flipkart Axis Bank Credit Card",
+            "bank_code": "axis",
+            "brand_code": "swiggy",
+            "benefit_rate": 4.0,
+            "benefit_type": "cashback",
+            "description": "4% cashback on Swiggy orders",
+        },
+        # ========== FUEL ==========
+        # Indian Oil
         {
             "card_name": "HDFC IndianOil Credit Card",
             "bank_code": "hdfc",
             "brand_code": "indianoil",
             "benefit_rate": 5.0,
             "benefit_type": "points",
-            "description": "5% fuel points at Indian Oil stations",
+            "description": "5% fuel points + 1% surcharge waiver at Indian Oil",
         },
-        # Axis Indian Oil → Indian Oil
         {
             "card_name": "Axis Bank Indian Oil Credit Card",
             "bank_code": "axis",
@@ -567,16 +674,15 @@ def seed_brands(db: Session, cards: dict):
             "benefit_type": "points",
             "description": "4% fuel points at Indian Oil stations",
         },
-        # BPCL Octane SBI → Bharat Petroleum
+        # BPCL/HPCL
         {
             "card_name": "BPCL Octane SBI Card",
             "bank_code": "sbi",
             "brand_code": "bpcl",
             "benefit_rate": 7.25,
             "benefit_type": "points",
-            "description": "7.25% value back at BPCL/HP fuel stations",
+            "description": "7.25% value back at BPCL/HP stations",
         },
-        # ICICI HPCL → Bharat Petroleum
         {
             "card_name": "ICICI HPCL Super Saver Credit Card",
             "bank_code": "icici",
@@ -585,14 +691,100 @@ def seed_brands(db: Session, cards: dict):
             "benefit_type": "cashback",
             "description": "6.5% cashback at HP fuel stations",
         },
-        # Ola Money SBI → Ola
+        # ========== TRAVEL ==========
+        # MakeMyTrip
+        {
+            "card_name": "MakeMyTrip ICICI Bank Credit Card",
+            "bank_code": "icici",
+            "brand_code": "makemytrip",
+            "benefit_rate": 6.0,
+            "benefit_type": "mycash",
+            "description": "6% myCash on hotels, 3% on flights via MakeMyTrip",
+        },
+        # Air India
+        {
+            "card_name": "Air India SBI Platinum Credit Card",
+            "bank_code": "sbi",
+            "brand_code": "airindia",
+            "benefit_rate": 10.0,
+            "benefit_type": "miles",
+            "description": "10 Maharaja Points per Rs 100 on Air India",
+        },
+        # IndiGo
+        {
+            "card_name": "6E Rewards XL IndiGo HDFC Bank Credit Card",
+            "bank_code": "hdfc",
+            "brand_code": "indigo",
+            "benefit_rate": 7.0,
+            "benefit_type": "bluchips",
+            "description": "7 BluChips per Rs 100 on IndiGo bookings",
+        },
+        # EaseMyTrip
+        {
+            "card_name": "Standard Chartered EaseMyTrip Credit Card",
+            "bank_code": "sc",
+            "brand_code": "easemytrip",
+            "benefit_rate": 20.0,
+            "benefit_type": "discount",
+            "description": "20% off hotels, 10% off flights on EaseMyTrip",
+        },
+        # ixigo
+        {
+            "card_name": "Ixigo AU Credit Card",
+            "bank_code": "au",
+            "brand_code": "ixigo",
+            "benefit_rate": 10.0,
+            "benefit_type": "discount",
+            "description": "10% off on flights, hotels, buses via ixigo",
+        },
+        # ========== RIDE-HAILING ==========
+        # Ola
         {
             "card_name": "Ola Money SBI Credit Card",
             "bank_code": "sbi",
             "brand_code": "ola",
             "benefit_rate": 7.0,
             "benefit_type": "cashback",
-            "description": "7% cashback on Ola rides and Ola Money transactions",
+            "description": "7% cashback on Ola rides",
+        },
+        # Uber (Flipkart Axis gives 4% on Uber)
+        {
+            "card_name": "Flipkart Axis Bank Credit Card",
+            "bank_code": "axis",
+            "brand_code": "uber",
+            "benefit_rate": 4.0,
+            "benefit_type": "cashback",
+            "description": "4% cashback on Uber rides",
+        },
+        # ========== RETAIL ==========
+        # Shoppers Stop
+        {
+            "card_name": "HDFC Shoppers Stop Credit Card",
+            "bank_code": "hdfc",
+            "brand_code": "shoppersstop",
+            "benefit_rate": 7.0,
+            "benefit_type": "points",
+            "description": "7% value back at Shoppers Stop (Black variant)",
+        },
+        # ========== ENTERTAINMENT ==========
+        # PVR INOX
+        {
+            "card_name": "PVR Kotak Platinum Credit Card",
+            "bank_code": "kotak",
+            "brand_code": "pvrinox",
+            "benefit_rate": 5.0,
+            "benefit_type": "discount",
+            "description": "5% off tickets, 20% off F&B at PVR INOX",
+        },
+        # ========== PAYMENTS ==========
+        # Paytm
+        {
+            "card_name": "Paytm HDFC Bank Credit Card",
+            "bank_code": "hdfc",
+            "brand_code": "paytm",
+            "benefit_rate": 3.0,
+            "benefit_type": "cashpoints",
+            "description": "3% cashpoints on Paytm transactions",
         },
     ]
 

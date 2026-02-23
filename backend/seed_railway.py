@@ -21,23 +21,56 @@ cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 print("Using existing tables (created by alembic)...")
 
 # ── 2. Seed brands ────────────────────────────────────────────────────────────
+# See docs/ECOSYSTEM_BENEFITS.md for documentation
 brands_data = [
+    # E-Commerce
     ("Tata Group", "tata", "Tata Group retail and consumer properties",
      ["westside", "croma", "bigbasket", "big basket", "zudio", "star bazaar",
       "tata cliq", "tata 1mg", "air asia india", "vistara", "taj hotels", "taj",
-      "tata motors", "tata sky", "tatasky"]),
+      "tata motors", "tata sky", "tatasky", "tanishq", "titan", "starbucks", "tata starbucks"]),
     ("Flipkart", "flipkart", "Flipkart and its subsidiaries",
      ["flipkart", "myntra", "cleartrip"]),
     ("Amazon", "amazon", "Amazon India marketplace and properties",
-     ["amazon", "prime video", "amazon fresh"]),
+     ["amazon", "prime video", "amazon fresh", "amazon pay"]),
+    ("Reliance Retail", "reliance", "Reliance Retail properties",
+     ["reliance", "jiomart", "ajio", "reliance digital", "reliance trends", "netmeds", "reliance fresh"]),
+    # Food Delivery
     ("Swiggy", "swiggy", "Swiggy food delivery and Instamart",
-     ["swiggy", "instamart"]),
+     ["swiggy", "instamart", "swiggy dineout", "swiggy genie"]),
+    ("Zomato", "zomato", "Zomato food delivery and Blinkit",
+     ["zomato", "blinkit", "zomato gold"]),
+    # Fuel
     ("Indian Oil", "indianoil", "Indian Oil fuel stations",
      ["indian oil", "indianoil", "iocl"]),
-    ("Bharat Petroleum", "bpcl", "Bharat Petroleum fuel stations",
+    ("Bharat Petroleum", "bpcl", "BPCL and HP fuel stations",
      ["bharat petroleum", "bpcl", "hp petrol", "hindustan petroleum", "hpcl"]),
+    # Travel
+    ("MakeMyTrip", "makemytrip", "MakeMyTrip travel bookings",
+     ["makemytrip", "mmt", "goibibo"]),
+    ("Air India", "airindia", "Air India airlines",
+     ["air india", "airindia", "maharaja"]),
+    ("IndiGo", "indigo", "IndiGo airlines",
+     ["indigo", "6e"]),
+    ("EaseMyTrip", "easemytrip", "EaseMyTrip travel bookings",
+     ["easemytrip", "ease my trip"]),
+    ("ixigo", "ixigo", "ixigo travel platform",
+     ["ixigo", "confirmtkt", "abhibus"]),
+    # Ride-hailing
     ("Ola", "ola", "Ola cabs and Ola Electric",
      ["ola", "ola cabs", "ola electric", "ola money"]),
+    ("Uber", "uber", "Uber ride-hailing",
+     ["uber", "uber eats"]),
+    # Retail
+    ("Shoppers Stop", "shoppersstop", "Shoppers Stop retail",
+     ["shoppers stop", "shoppersstop"]),
+    # Entertainment
+    ("PVR INOX", "pvrinox", "PVR INOX cinemas",
+     ["pvr", "inox", "pvr inox", "pvr cinemas"]),
+    ("BookMyShow", "bookmyshow", "BookMyShow entertainment ticketing",
+     ["bookmyshow", "book my show", "bms"]),
+    # Payments
+    ("Paytm", "paytm", "Paytm payments and commerce",
+     ["paytm", "paytm mall", "paytm money"]),
 ]
 
 brand_ids = {}
@@ -70,18 +103,39 @@ conn.commit()
 print(f"Brands seeded: {list(brand_ids.keys())}")
 
 # ── 3. Seed card ecosystem benefits ──────────────────────────────────────────
+# Format: (card_name, bank_code, brand_code, benefit_rate, benefit_type, description)
 benefits_data = [
-    ("Tata Neu HDFC Bank Credit Card",     "hdfc",  "tata",      5.0,  "neucoins", "5% NeuCoins on all Tata Group properties"),
-    ("Tata Neu Plus SBI Card",             "sbi",   "tata",      5.0,  "neucoins", "5% NeuCoins on all Tata Group properties"),
-    ("Tata Neu Infinity SBI Card",         "sbi",   "tata",      10.0, "neucoins", "10% NeuCoins on all Tata Group properties (Infinity tier)"),
-    ("Flipkart Axis Bank Credit Card",     "axis",  "flipkart",  5.0,  "cashback", "5% unlimited cashback on Flipkart and Myntra"),
-    ("Amazon Pay ICICI Bank Credit Card",  "icici", "amazon",    5.0,  "cashback", "5% cashback on Amazon for Prime members"),
-    ("Swiggy HDFC Bank Credit Card",       "hdfc",  "swiggy",    10.0, "cashback", "10% cashback on Swiggy orders"),
-    ("HDFC IndianOil Credit Card",         "hdfc",  "indianoil", 5.0,  "points",   "5% fuel points at Indian Oil stations"),
-    ("Axis Bank Indian Oil Credit Card",   "axis",  "indianoil", 4.0,  "points",   "4% fuel points at Indian Oil stations"),
-    ("BPCL Octane SBI Card",               "sbi",   "bpcl",      7.25, "points",   "7.25% value back at BPCL/HP fuel stations"),
-    ("ICICI HPCL Super Saver Credit Card", "icici", "bpcl",      6.5,  "cashback", "6.5% cashback at HP fuel stations"),
-    ("Ola Money SBI Credit Card",          "sbi",   "ola",       7.0,  "cashback", "7% cashback on Ola rides and Ola Money transactions"),
+    # ========== TATA GROUP ==========
+    ("Tata Neu HDFC Bank Credit Card",     "hdfc",  "tata",      5.0,  "neucoins", "5% NeuCoins on Tata properties"),
+    ("Tata Neu Plus SBI Card",             "sbi",   "tata",      5.0,  "neucoins", "5% NeuCoins on Tata properties"),
+    ("Tata Neu Infinity SBI Card",         "sbi",   "tata",      10.0, "neucoins", "10% NeuCoins on Tata properties"),
+    # ========== E-COMMERCE ==========
+    ("Flipkart Axis Bank Credit Card",     "axis",  "flipkart",  5.0,  "cashback", "5% on Flipkart, 7.5% on Myntra"),
+    ("Amazon Pay ICICI Bank Credit Card",  "icici", "amazon",    5.0,  "cashback", "5% on Amazon (Prime), 3% (non-Prime)"),
+    ("Reliance SBI Card PRIME",            "sbi",   "reliance",  10.0, "points",   "10 points per Rs 100 on Ajio & JioMart"),
+    # ========== FOOD DELIVERY ==========
+    ("Swiggy HDFC Bank Credit Card",       "hdfc",  "swiggy",    10.0, "cashback", "10% on Swiggy (cap Rs 1,500/cycle)"),
+    ("Flipkart Axis Bank Credit Card",     "axis",  "swiggy",    4.0,  "cashback", "4% on Swiggy orders"),
+    # ========== FUEL ==========
+    ("HDFC IndianOil Credit Card",         "hdfc",  "indianoil", 5.0,  "points",   "5% fuel points + surcharge waiver at Indian Oil"),
+    ("Axis Bank Indian Oil Credit Card",   "axis",  "indianoil", 4.0,  "points",   "4% fuel points at Indian Oil"),
+    ("BPCL Octane SBI Card",               "sbi",   "bpcl",      7.25, "points",   "7.25% value back at BPCL/HP"),
+    ("ICICI HPCL Super Saver Credit Card", "icici", "bpcl",      6.5,  "cashback", "6.5% at HP fuel stations"),
+    # ========== TRAVEL ==========
+    ("MakeMyTrip ICICI Bank Credit Card",  "icici", "makemytrip",6.0,  "mycash",   "6% myCash on hotels, 3% on flights"),
+    ("Air India SBI Platinum Credit Card", "sbi",   "airindia",  10.0, "miles",    "10 Maharaja Points per Rs 100 on Air India"),
+    ("6E Rewards XL IndiGo HDFC Bank Credit Card", "hdfc", "indigo", 7.0, "bluchips", "7 BluChips per Rs 100 on IndiGo"),
+    ("Standard Chartered EaseMyTrip Credit Card", "sc", "easemytrip", 20.0, "discount", "20% off hotels, 10% off flights"),
+    ("Ixigo AU Credit Card",               "au",    "ixigo",     10.0, "discount", "10% off flights, hotels, buses via ixigo"),
+    # ========== RIDE-HAILING ==========
+    ("Ola Money SBI Credit Card",          "sbi",   "ola",       7.0,  "cashback", "7% on Ola rides"),
+    ("Flipkart Axis Bank Credit Card",     "axis",  "uber",      4.0,  "cashback", "4% on Uber rides"),
+    # ========== RETAIL ==========
+    ("HDFC Shoppers Stop Credit Card",     "hdfc",  "shoppersstop", 7.0, "points", "7% value back at Shoppers Stop"),
+    # ========== ENTERTAINMENT ==========
+    ("PVR Kotak Platinum Credit Card",     "kotak", "pvrinox",   5.0,  "discount", "5% off tickets, 20% off F&B"),
+    # ========== PAYMENTS ==========
+    ("Paytm HDFC Bank Credit Card",        "hdfc",  "paytm",     3.0,  "cashpoints", "3% cashpoints on Paytm"),
 ]
 
 inserted = 0
