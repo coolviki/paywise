@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Boolean, Numeric, ForeignKey
+from sqlalchemy import Column, String, DateTime, Boolean, Numeric, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 from ..core.types import UUID
@@ -45,6 +45,7 @@ class Card(Base):
     bank = relationship("Bank", back_populates="cards")
     payment_methods = relationship("PaymentMethod", back_populates="card")
     offers = relationship("Offer", back_populates="card")
+    ecosystem_benefits = relationship("CardEcosystemBenefit", back_populates="card")
 
     def __repr__(self):
         return f"<Card {self.name}>"
@@ -71,3 +72,24 @@ class PaymentMethod(Base):
 
     def __repr__(self):
         return f"<PaymentMethod {self.nickname or self.card_id}>"
+
+
+class CardEcosystemBenefit(Base):
+    __tablename__ = "card_ecosystem_benefits"
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    card_id = Column(UUID, ForeignKey("cards.id", ondelete="CASCADE"), nullable=False)
+    brand_id = Column(UUID, ForeignKey("brands.id", ondelete="CASCADE"), nullable=False)
+    benefit_rate = Column(Numeric(5, 2), nullable=False)
+    benefit_type = Column(String(50), nullable=False)  # 'neucoins', 'cashback', 'points'
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    card = relationship("Card", back_populates="ecosystem_benefits")
+    brand = relationship("Brand", back_populates="ecosystem_benefits")
+
+    def __repr__(self):
+        return f"<CardEcosystemBenefit {self.card_id} → {self.brand_id} @ {self.benefit_rate}%>"

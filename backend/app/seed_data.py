@@ -6,7 +6,7 @@ Run with: python -m app.seed_data
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from .core.database import SessionLocal, engine, Base
-from .models import Bank, Card, Category, Merchant, MerchantLocation, Offer
+from .models import Bank, Card, Category, Merchant, MerchantLocation, Offer, Brand, BrandKeyword, CardEcosystemBenefit
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
@@ -419,6 +419,194 @@ def seed_offers(db: Session, banks: dict, merchants: dict):
     db.commit()
 
 
+def seed_brands(db: Session, cards: dict):
+    """Seed brand ecosystem data — brands, keywords, and card ecosystem benefits."""
+
+    # ------------------------------------------------------------------ brands
+    brands_data = [
+        {
+            "name": "Tata Group",
+            "code": "tata",
+            "description": "Tata Group retail and consumer properties",
+            "keywords": [
+                "westside", "croma", "bigbasket", "big basket",
+                "zudio", "star bazaar", "tata cliq", "tata 1mg",
+                "air asia india", "vistara", "taj hotels", "taj",
+                "tata motors", "tata sky", "tatasky",
+            ],
+        },
+        {
+            "name": "Flipkart",
+            "code": "flipkart",
+            "description": "Flipkart and its subsidiaries",
+            "keywords": ["flipkart", "myntra", "cleartrip"],
+        },
+        {
+            "name": "Amazon",
+            "code": "amazon",
+            "description": "Amazon India marketplace and properties",
+            "keywords": ["amazon", "prime video", "amazon fresh"],
+        },
+        {
+            "name": "Swiggy",
+            "code": "swiggy",
+            "description": "Swiggy food delivery and Instamart",
+            "keywords": ["swiggy", "instamart"],
+        },
+        {
+            "name": "Indian Oil",
+            "code": "indianoil",
+            "description": "Indian Oil fuel stations",
+            "keywords": ["indian oil", "indianoil", "iocl"],
+        },
+        {
+            "name": "Bharat Petroleum",
+            "code": "bpcl",
+            "description": "Bharat Petroleum fuel stations",
+            "keywords": ["bharat petroleum", "bpcl", "hp petrol", "hindustan petroleum", "hpcl"],
+        },
+    ]
+
+    brands = {}
+    for data in brands_data:
+        keywords = data.pop("keywords")
+        existing = db.query(Brand).filter(Brand.code == data["code"]).first()
+        if not existing:
+            brand = Brand(**data)
+            db.add(brand)
+            db.flush()
+        else:
+            brand = existing
+        brands[data["code"]] = brand
+
+        # Upsert keywords
+        existing_keywords = {kw.keyword for kw in brand.keywords}
+        for kw in keywords:
+            if kw not in existing_keywords:
+                db.add(BrandKeyword(brand_id=brand.id, keyword=kw))
+
+    db.commit()
+
+    # ------------------------------------------------- card ecosystem benefits
+    benefits_data = [
+        # Tata Neu cards → Tata Group (5% NeuCoins for Plus/HDFC, 10% for Infinity)
+        {
+            "card_name": "Tata Neu HDFC Bank Credit Card",
+            "bank_code": "hdfc",
+            "brand_code": "tata",
+            "benefit_rate": 5.0,
+            "benefit_type": "neucoins",
+            "description": "5% NeuCoins on all Tata Group properties (Westside, Croma, BigBasket, Zudio, etc.)",
+        },
+        {
+            "card_name": "Tata Neu Plus SBI Card",
+            "bank_code": "sbi",
+            "brand_code": "tata",
+            "benefit_rate": 5.0,
+            "benefit_type": "neucoins",
+            "description": "5% NeuCoins on all Tata Group properties",
+        },
+        {
+            "card_name": "Tata Neu Infinity SBI Card",
+            "bank_code": "sbi",
+            "brand_code": "tata",
+            "benefit_rate": 10.0,
+            "benefit_type": "neucoins",
+            "description": "10% NeuCoins on all Tata Group properties (Infinity tier)",
+        },
+        # Flipkart Axis → Flipkart ecosystem
+        {
+            "card_name": "Flipkart Axis Bank Credit Card",
+            "bank_code": "axis",
+            "brand_code": "flipkart",
+            "benefit_rate": 5.0,
+            "benefit_type": "cashback",
+            "description": "5% unlimited cashback on Flipkart and Myntra",
+        },
+        # Amazon Pay ICICI → Amazon ecosystem
+        {
+            "card_name": "Amazon Pay ICICI Bank Credit Card",
+            "bank_code": "icici",
+            "brand_code": "amazon",
+            "benefit_rate": 5.0,
+            "benefit_type": "cashback",
+            "description": "5% cashback on Amazon for Prime members",
+        },
+        # Swiggy HDFC → Swiggy ecosystem
+        {
+            "card_name": "Swiggy HDFC Bank Credit Card",
+            "bank_code": "hdfc",
+            "brand_code": "swiggy",
+            "benefit_rate": 10.0,
+            "benefit_type": "cashback",
+            "description": "10% cashback on Swiggy orders",
+        },
+        # HDFC IndianOil → Indian Oil
+        {
+            "card_name": "HDFC IndianOil Credit Card",
+            "bank_code": "hdfc",
+            "brand_code": "indianoil",
+            "benefit_rate": 5.0,
+            "benefit_type": "points",
+            "description": "5% fuel points at Indian Oil stations",
+        },
+        # Axis Indian Oil → Indian Oil
+        {
+            "card_name": "Axis Bank Indian Oil Credit Card",
+            "bank_code": "axis",
+            "brand_code": "indianoil",
+            "benefit_rate": 4.0,
+            "benefit_type": "points",
+            "description": "4% fuel points at Indian Oil stations",
+        },
+        # BPCL Octane SBI → Bharat Petroleum
+        {
+            "card_name": "BPCL Octane SBI Card",
+            "bank_code": "sbi",
+            "brand_code": "bpcl",
+            "benefit_rate": 7.25,
+            "benefit_type": "points",
+            "description": "7.25% value back at BPCL/HP fuel stations",
+        },
+        # ICICI HPCL → Bharat Petroleum
+        {
+            "card_name": "ICICI HPCL Super Saver Credit Card",
+            "bank_code": "icici",
+            "brand_code": "bpcl",
+            "benefit_rate": 6.5,
+            "benefit_type": "cashback",
+            "description": "6.5% cashback at HP fuel stations",
+        },
+    ]
+
+    for data in benefits_data:
+        card_name = data.pop("card_name")
+        bank_code = data.pop("bank_code")
+        brand_code = data.pop("brand_code")
+
+        brand = brands.get(brand_code)
+        if not brand:
+            continue
+
+        card = db.query(Card).join(Bank).filter(
+            Bank.code == bank_code,
+            Card.name == card_name,
+        ).first()
+        if not card:
+            continue
+
+        existing = db.query(CardEcosystemBenefit).filter(
+            CardEcosystemBenefit.card_id == card.id,
+            CardEcosystemBenefit.brand_id == brand.id,
+        ).first()
+
+        if not existing:
+            db.add(CardEcosystemBenefit(card_id=card.id, brand_id=brand.id, **data))
+
+    db.commit()
+    return brands
+
+
 def seed_all():
     """Run all seed functions."""
     db = SessionLocal()
@@ -442,6 +630,10 @@ def seed_all():
         print("Seeding offers...")
         seed_offers(db, banks, merchants)
         print("Offers seeded")
+
+        print("Seeding brands and ecosystem benefits...")
+        brands = seed_brands(db, cards)
+        print(f"Created/found {len(brands)} brands with keywords and ecosystem benefits")
 
         print("Done!")
 
