@@ -16,37 +16,9 @@ conn = psycopg2.connect(DB_URL)
 conn.autocommit = False
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-# ── 1. Create tables if missing ───────────────────────────────────────────────
-cur.execute("""
-CREATE TABLE IF NOT EXISTS brands (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR NOT NULL,
-    code VARCHAR NOT NULL UNIQUE,
-    description VARCHAR,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-""")
-cur.execute("""
-CREATE TABLE IF NOT EXISTS brand_keywords (
-    id SERIAL PRIMARY KEY,
-    brand_id INTEGER NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
-    keyword VARCHAR NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-""")
-cur.execute("""
-CREATE TABLE IF NOT EXISTS card_ecosystem_benefits (
-    id SERIAL PRIMARY KEY,
-    card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-    brand_id INTEGER NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
-    benefit_rate FLOAT NOT NULL,
-    benefit_type VARCHAR NOT NULL,
-    description VARCHAR,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-""")
-conn.commit()
-print("Tables ensured.")
+# ── 1. Tables already created by alembic migrations (UUID-based) ──────────────
+# No need to create tables here - they exist from the migration
+print("Using existing tables (created by alembic)...")
 
 # ── 2. Seed brands ────────────────────────────────────────────────────────────
 brands_data = [
@@ -64,16 +36,24 @@ brands_data = [
      ["indian oil", "indianoil", "iocl"]),
     ("Bharat Petroleum", "bpcl", "Bharat Petroleum fuel stations",
      ["bharat petroleum", "bpcl", "hp petrol", "hindustan petroleum", "hpcl"]),
+    ("Ola", "ola", "Ola cabs and Ola Electric",
+     ["ola", "ola cabs", "ola electric", "ola money"]),
 ]
 
 brand_ids = {}
 for name, code, desc, keywords in brands_data:
-    cur.execute(
-        "INSERT INTO brands (name, code, description) VALUES (%s,%s,%s) "
-        "ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name RETURNING id",
-        (name, code, desc),
-    )
-    brand_id = cur.fetchone()[0]
+    # Check if brand exists
+    cur.execute("SELECT id FROM brands WHERE code = %s", (code,))
+    row = cur.fetchone()
+    if row:
+        brand_id = row[0]
+    else:
+        cur.execute(
+            "INSERT INTO brands (id, name, code, description, is_active, created_at) "
+            "VALUES (gen_random_uuid(), %s, %s, %s, true, NOW()) RETURNING id",
+            (name, code, desc),
+        )
+        brand_id = cur.fetchone()[0]
     brand_ids[code] = brand_id
 
     cur.execute("SELECT keyword FROM brand_keywords WHERE brand_id=%s", (brand_id,))
@@ -81,7 +61,8 @@ for name, code, desc, keywords in brands_data:
     for kw in keywords:
         if kw not in existing_kws:
             cur.execute(
-                "INSERT INTO brand_keywords (brand_id, keyword) VALUES (%s,%s)",
+                "INSERT INTO brand_keywords (id, brand_id, keyword, created_at) "
+                "VALUES (gen_random_uuid(), %s, %s, NOW())",
                 (brand_id, kw),
             )
 
@@ -100,6 +81,7 @@ benefits_data = [
     ("Axis Bank Indian Oil Credit Card",   "axis",  "indianoil", 4.0,  "points",   "4% fuel points at Indian Oil stations"),
     ("BPCL Octane SBI Card",               "sbi",   "bpcl",      7.25, "points",   "7.25% value back at BPCL/HP fuel stations"),
     ("ICICI HPCL Super Saver Credit Card", "icici", "bpcl",      6.5,  "cashback", "6.5% cashback at HP fuel stations"),
+    ("Ola Money SBI Credit Card",          "sbi",   "ola",       7.0,  "cashback", "7% cashback on Ola rides and Ola Money transactions"),
 ]
 
 inserted = 0
@@ -127,8 +109,8 @@ for card_name, bank_code, brand_code, rate, btype, desc in benefits_data:
 
     cur.execute(
         """INSERT INTO card_ecosystem_benefits
-               (card_id, brand_id, benefit_rate, benefit_type, description)
-           VALUES (%s,%s,%s,%s,%s)""",
+               (id, card_id, brand_id, benefit_rate, benefit_type, description, created_at)
+           VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, NOW())""",
         (card_id, brand_id, rate, btype, desc),
     )
     inserted += 1
