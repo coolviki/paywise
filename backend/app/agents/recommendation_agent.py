@@ -7,7 +7,9 @@ from ..models.card import PaymentMethod
 class RecommendationAgent(BaseAgent):
     """Agent for generating payment recommendations using LLM."""
 
-    SYSTEM_PROMPT = """PayWise: India credit card expert. Category offers: DINING(Diners 5x,Elite 2x), FUEL(IndianOil 5%,BPCL 7%), GROCERY(Amazon 2%,Millennia 2.5%), SHOPPING(Flipkart 5%,Regalia 4x). JSON only, be brief."""
+    SYSTEM_PROMPT = """PayWise: India credit card expert. Recommend the card that gives the highest real value to the user.
+IMPORTANT: If a card has an ecosystem_benefit_rate for this merchant, that rate overrides its base_reward_rate — always prefer ecosystem benefits over generic rates.
+JSON only, be brief."""
 
     # Category mapping for better context
     CATEGORY_HINTS = {
@@ -49,6 +51,7 @@ class RecommendationAgent(BaseAgent):
         place_category: Optional[str],
         payment_methods: List[PaymentMethod],
         transaction_amount: Optional[float] = None,
+        ecosystem_benefits: Optional[Dict[str, dict]] = None,
     ) -> Optional[Dict[str, Any]]:
         """Get LLM-based recommendation for the best card to use."""
         agent = RecommendationAgent()
@@ -56,18 +59,27 @@ class RecommendationAgent(BaseAgent):
         if not agent.client:
             return None
 
-        # Build card list for the prompt
+        ecosystem_benefits = ecosystem_benefits or {}
+
+        # Build card list for the prompt, injecting ecosystem benefits where present
         cards_info = []
         for pm in payment_methods:
             if pm.card:
-                card_info = {
-                    "id": str(pm.card_id),
+                card_id_str = str(pm.card_id)
+                card_info: Dict[str, Any] = {
+                    "id": card_id_str,
                     "name": pm.card.name,
                     "bank": pm.card.bank.name if pm.card.bank else "Unknown",
                     "type": pm.card.card_type,
                     "reward_type": pm.card.reward_type,
                     "base_reward_rate": float(pm.card.base_reward_rate) if pm.card.base_reward_rate else None,
                 }
+                # Inject ecosystem benefit when this card has one for the merchant's brand
+                benefit = ecosystem_benefits.get(card_id_str)
+                if benefit:
+                    card_info["ecosystem_benefit_rate"] = benefit["benefit_rate"]
+                    card_info["ecosystem_benefit_type"] = benefit["benefit_type"]
+                    card_info["ecosystem_benefit_note"] = benefit["description"]
                 cards_info.append(card_info)
 
         if not cards_info:
@@ -76,7 +88,13 @@ class RecommendationAgent(BaseAgent):
         amount_str = f"Rs.{transaction_amount:.0f}" if transaction_amount else "a typical purchase"
         category_type = RecommendationAgent.get_category_type(place_category)
 
-        prompt = f"""{category_type.upper()}: {place_name}, {amount_str}
+        # Add an explicit ecosystem context line when relevant
+        ecosystem_note = ""
+        if ecosystem_benefits:
+            sample = next(iter(ecosystem_benefits.values()))
+            ecosystem_note = f"\nNote: {place_name} is a {sample['brand_name']} property. Cards with ecosystem_benefit_rate earn that rate here instead of their base rate."
+
+        prompt = f"""{category_type.upper()}: {place_name}, {amount_str}{ecosystem_note}
 Cards:{json.dumps(cards_info)}
 Reply with ONLY this JSON (no offers array, keep reason under 10 words):
 {{"best_card":{{"card_id":"id","estimated_savings":"Rs.X","reason":"short {category_type} reason"}},"insight":"tip"}}"""
