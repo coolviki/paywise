@@ -51,10 +51,11 @@ def seed_cards(db: Session, banks: dict):
     """Seed cards data - comprehensive list of Indian credit cards."""
     cards_data = [
         # ============================================
-        # HDFC BANK (15 cards)
+        # HDFC BANK (16 cards)
         # ============================================
         {"bank_code": "hdfc", "name": "HDFC Infinia Metal Edition", "card_type": "credit", "card_network": "visa", "annual_fee": 12500, "reward_type": "points", "base_reward_rate": 3.33},
         {"bank_code": "hdfc", "name": "HDFC Diners Club Black Metal Edition", "card_type": "credit", "card_network": "rupay", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 3.33},
+        {"bank_code": "hdfc", "name": "HDFC Diners Club Privilege", "card_type": "credit", "card_network": "rupay", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
         {"bank_code": "hdfc", "name": "HDFC Regalia Gold", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
         {"bank_code": "hdfc", "name": "HDFC Regalia", "card_type": "credit", "card_network": "visa", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
         {"bank_code": "hdfc", "name": "HDFC Diners ClubMiles", "card_type": "credit", "card_network": "rupay", "annual_fee": 1000, "reward_type": "miles", "base_reward_rate": 2.0},
@@ -86,9 +87,10 @@ def seed_cards(db: Session, banks: dict):
         {"bank_code": "icici", "name": "ICICI Ferrari Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 1500, "reward_type": "points", "base_reward_rate": 1.5},
 
         # ============================================
-        # SBI CARD (14 cards)
+        # SBI CARD (15 cards)
         # ============================================
         {"bank_code": "sbi", "name": "SBI Card ELITE", "card_type": "credit", "card_network": "visa", "annual_fee": 4999, "reward_type": "points", "base_reward_rate": 2.0},
+        {"bank_code": "sbi", "name": "Ola Money SBI Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "cashback", "base_reward_rate": 1.0},
         {"bank_code": "sbi", "name": "SBI Card PRIME", "card_type": "credit", "card_network": "visa", "annual_fee": 2999, "reward_type": "points", "base_reward_rate": 2.0},
         {"bank_code": "sbi", "name": "SBI Card Pulse", "card_type": "credit", "card_network": "visa", "annual_fee": 1499, "reward_type": "points", "base_reward_rate": 1.5},
         {"bank_code": "sbi", "name": "SimplyCLICK SBI Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "points", "base_reward_rate": 0.67},
@@ -465,6 +467,12 @@ def seed_brands(db: Session, cards: dict):
             "description": "Bharat Petroleum fuel stations",
             "keywords": ["bharat petroleum", "bpcl", "hp petrol", "hindustan petroleum", "hpcl"],
         },
+        {
+            "name": "Ola",
+            "code": "ola",
+            "description": "Ola cabs and Ola Electric",
+            "keywords": ["ola", "ola cabs", "ola electric", "ola money"],
+        },
     ]
 
     brands = {}
@@ -576,6 +584,15 @@ def seed_brands(db: Session, cards: dict):
             "benefit_rate": 6.5,
             "benefit_type": "cashback",
             "description": "6.5% cashback at HP fuel stations",
+        },
+        # Ola Money SBI → Ola
+        {
+            "card_name": "Ola Money SBI Credit Card",
+            "bank_code": "sbi",
+            "brand_code": "ola",
+            "benefit_rate": 7.0,
+            "benefit_type": "cashback",
+            "description": "7% cashback on Ola rides and Ola Money transactions",
         },
     ]
 
