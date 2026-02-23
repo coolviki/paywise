@@ -29,23 +29,6 @@ PayWise helps you choose the best payment method for every purchase by analyzing
 - Redis (caching)
 - Anthropic Claude API (recommendations)
 
-## Pending TODOs (run from laptop)
-
-> **Action required next time you open Claude Code on your laptop:**
->
-> Seed the Railway production database with brands, brand keywords, and card ecosystem benefits.
-> This is needed for the Tata Neu card recommendation fix to work in production.
->
-> ```bash
-> pip install psycopg2-binary   # if not already installed
-> python backend/seed_railway.py
-> ```
->
-> The script connects to Railway's Postgres directly and is safe to re-run (skips existing rows).
-> File: `backend/seed_railway.py`
-
----
-
 ## Getting Started
 
 ### Prerequisites
