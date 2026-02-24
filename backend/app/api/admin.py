@@ -412,6 +412,7 @@ async def list_all_cards(
             annual_fee=card.annual_fee,
             reward_type=card.reward_type,
             base_reward_rate=card.base_reward_rate,
+            terms_url=card.terms_url,
             is_active=card.is_active if card.is_active is not None else True,
             created_at=card.created_at,
         )
@@ -440,6 +441,7 @@ async def get_card(
         annual_fee=card.annual_fee,
         reward_type=card.reward_type,
         base_reward_rate=card.base_reward_rate,
+        terms_url=card.terms_url,
         is_active=card.is_active if card.is_active is not None else True,
         created_at=card.created_at,
     )
@@ -473,6 +475,7 @@ async def create_card(
         annual_fee=data.annual_fee,
         reward_type=data.reward_type,
         base_reward_rate=data.base_reward_rate,
+        terms_url=data.terms_url,
         is_active=True,
     )
     db.add(card)
@@ -489,6 +492,7 @@ async def create_card(
         annual_fee=card.annual_fee,
         reward_type=card.reward_type,
         base_reward_rate=card.base_reward_rate,
+        terms_url=card.terms_url,
         is_active=card.is_active,
         created_at=card.created_at,
     )
@@ -518,6 +522,8 @@ async def update_card(
         card.reward_type = data.reward_type
     if data.base_reward_rate is not None:
         card.base_reward_rate = data.base_reward_rate
+    if data.terms_url is not None:
+        card.terms_url = data.terms_url
     if data.is_active is not None:
         card.is_active = data.is_active
 
@@ -534,6 +540,7 @@ async def update_card(
         annual_fee=card.annual_fee,
         reward_type=card.reward_type,
         base_reward_rate=card.base_reward_rate,
+        terms_url=card.terms_url,
         is_active=card.is_active if card.is_active is not None else True,
         created_at=card.created_at,
     )

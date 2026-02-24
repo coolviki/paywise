@@ -117,6 +117,7 @@ export const createCard = async (data: {
   annual_fee?: number;
   reward_type?: string;
   base_reward_rate?: number;
+  terms_url?: string;
 }): Promise<CardFull> => {
   const response = await api.post('/admin/cards/new', data);
   return response.data;
@@ -131,6 +132,7 @@ export const updateCard = async (
     annual_fee?: number;
     reward_type?: string;
     base_reward_rate?: number;
+    terms_url?: string;
     is_active?: boolean;
   }
 ): Promise<CardFull> => {

@@ -129,6 +129,7 @@ class CardCreate(BaseModel):
     annual_fee: Optional[Decimal] = None
     reward_type: Optional[str] = None  # cashback, points, miles
     base_reward_rate: Optional[Decimal] = None
+    terms_url: Optional[str] = None  # Link to card T&C page
 
 
 class CardUpdate(BaseModel):
@@ -138,6 +139,7 @@ class CardUpdate(BaseModel):
     annual_fee: Optional[Decimal] = None
     reward_type: Optional[str] = None
     base_reward_rate: Optional[Decimal] = None
+    terms_url: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -151,6 +153,7 @@ class CardResponse(BaseModel):
     annual_fee: Optional[Decimal] = None
     reward_type: Optional[str] = None
     base_reward_rate: Optional[Decimal] = None
+    terms_url: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
 

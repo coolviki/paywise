@@ -37,6 +37,7 @@ class Card(Base):
     annual_fee = Column(Numeric(10, 2), nullable=True)
     reward_type = Column(String(50), nullable=True)  # 'cashback', 'points', 'miles'
     base_reward_rate = Column(Numeric(5, 2), nullable=True)
+    terms_url = Column(String(500), nullable=True)  # Link to card T&C page
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -171,6 +171,7 @@ export interface CardFull {
   annual_fee?: number;
   reward_type?: string;
   base_reward_rate?: number;
+  terms_url?: string;
   is_active: boolean;
   created_at?: string;
 }

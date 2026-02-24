@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, CreditCard, X, Check } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, CreditCard, X, Check, ExternalLink } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { CardFull, BankSimple } from '../../types';
@@ -22,6 +22,7 @@ export function CardsTab() {
     annual_fee: '',
     reward_type: 'points',
     base_reward_rate: '',
+    terms_url: '',
   });
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export function CardsTab() {
         annual_fee: newCard.annual_fee ? parseFloat(newCard.annual_fee) : undefined,
         reward_type: newCard.reward_type || undefined,
         base_reward_rate: newCard.base_reward_rate ? parseFloat(newCard.base_reward_rate) : undefined,
+        terms_url: newCard.terms_url || undefined,
       });
       setIsCreating(false);
       setNewCard({
@@ -85,6 +87,7 @@ export function CardsTab() {
         annual_fee: '',
         reward_type: 'points',
         base_reward_rate: '',
+        terms_url: '',
       });
       loadCards();
     } catch (err: any) {
@@ -103,6 +106,7 @@ export function CardsTab() {
         annual_fee: editingCard.annual_fee,
         reward_type: editingCard.reward_type || undefined,
         base_reward_rate: editingCard.base_reward_rate,
+        terms_url: editingCard.terms_url || undefined,
         is_active: editingCard.is_active,
       });
       setEditingCard(null);
@@ -270,6 +274,16 @@ export function CardsTab() {
                 placeholder="1.0"
               />
             </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className="block text-sm font-medium mb-1">Terms & Conditions URL</label>
+              <input
+                type="url"
+                value={newCard.terms_url}
+                onChange={(e) => setNewCard({ ...newCard, terms_url: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg"
+                placeholder="https://bank.com/card-terms"
+              />
+            </div>
           </div>
           <div className="flex gap-2 mt-4">
             <Button onClick={handleCreate}>Create Card</Button>
@@ -305,7 +319,14 @@ export function CardsTab() {
                           type="text"
                           value={editingCard.name}
                           onChange={(e) => setEditingCard({ ...editingCard, name: e.target.value })}
-                          className="w-full px-2 py-1 border rounded"
+                          className="w-full px-2 py-1 border rounded mb-1"
+                        />
+                        <input
+                          type="url"
+                          value={editingCard.terms_url || ''}
+                          onChange={(e) => setEditingCard({ ...editingCard, terms_url: e.target.value })}
+                          className="w-full px-2 py-1 border rounded text-xs"
+                          placeholder="Terms URL"
                         />
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{card.bank_name}</td>
@@ -380,7 +401,20 @@ export function CardsTab() {
                     // View mode
                     <>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900 dark:text-white">{card.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900 dark:text-white">{card.name}</span>
+                          {card.terms_url && (
+                            <a
+                              href={card.terms_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary-600 hover:text-primary-700"
+                              title="View Terms & Conditions"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{card.bank_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 capitalize">{card.card_type}</td>
