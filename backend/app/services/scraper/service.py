@@ -18,6 +18,21 @@ from .sbi import SBIScraper
 logger = logging.getLogger(__name__)
 
 
+# Known brand keywords for automatic matching
+BRAND_KEYWORDS = {
+    "Tata Group": ["tata", "westside", "croma", "tanishq", "bigbasket", "tata cliq", "tata neu", "starbucks india", "zudio", "titan", "fastrack", "sonata"],
+    "Swiggy": ["swiggy"],
+    "Zomato": ["zomato"],
+    "Amazon": ["amazon"],
+    "Flipkart": ["flipkart", "myntra"],
+    "Marriott": ["marriott", "westin", "sheraton", "le meridien", "w hotel", "st regis", "ritz carlton"],
+    "IndianOil": ["indianoil", "indian oil", "iocl"],
+    "SmartBuy": ["smartbuy", "smart buy"],
+    "BPCL": ["bpcl", "bharat petroleum"],
+    "HP Petrol": ["hp petrol", "hindustan petroleum", "hpcl"],
+}
+
+
 class ScraperStatus:
     """Holds the current scraper status."""
 
@@ -146,11 +161,13 @@ class ScraperService:
                         # Check if there's already a pending brand with this code
                         existing_pending_brand = self._find_existing_pending_brand(brand_code)
                         if not existing_pending_brand:
+                            # Use known keywords if available, otherwise use brand name
+                            brand_keywords = BRAND_KEYWORDS.get(benefit.brand_name, [benefit.brand_name.lower()])
                             pending_brand = PendingBrandChange(
                                 name=benefit.brand_name,
                                 code=brand_code,
                                 description=f"Auto-discovered from {benefit.card_name} scraping",
-                                keywords=[benefit.brand_name.lower()],
+                                keywords=brand_keywords,
                                 source_url=benefit.source_url,
                                 source_bank=scraper_status.current_bank,
                                 status="pending"
@@ -158,7 +175,7 @@ class ScraperService:
                             self.db.add(pending_brand)
                             pending_brands_created.add(brand_code)
                             scraper_status.brands_created += 1
-                            self.logger.info(f"Created pending brand: {benefit.brand_name}")
+                            self.logger.info(f"Created pending brand: {benefit.brand_name} with keywords: {brand_keywords}")
 
                     # Skip benefit creation since brand doesn't exist yet
                     continue
