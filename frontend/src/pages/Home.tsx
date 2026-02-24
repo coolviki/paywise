@@ -133,67 +133,108 @@ export function Home() {
 
       {/* Content */}
       <div className="p-4 space-y-6">
-        {/* Online Portals matching search - show immediately */}
-        {searchQuery && matchingOnlinePortals.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Globe className="w-4 h-4 text-primary-600" />
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Online Portals
-              </h3>
-            </div>
-            <div className="space-y-2">
-              {matchingOnlinePortals.map((portal) => (
-                <button
-                  key={portal.id}
-                  onClick={() => handleMerchantSelect(portal)}
-                  className="w-full flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors text-left shadow-sm"
-                >
-                  <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg font-semibold text-primary-600">
-                      {portal.name[0]}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">
-                      {portal.name}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {portal.category}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {isLoading ? (
-          <Loading text="Finding places..." />
-        ) : (
+        {searchQuery ? (
           <>
-            {/* Search results or nearby places */}
-            <PlacesList
-              merchants={results}
-              onSelect={handleMerchantSelect}
-              title={searchQuery ? 'Search Results' : 'Nearby Places'}
-            />
-
-            {/* Hot offers section */}
-            {!searchQuery && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                  <Tag className="w-4 h-4" />
-                  Hot Offers Today
-                </h3>
-                <Card className="p-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white border-0">
-                  <p className="font-medium">20% off at Swiggy with HDFC</p>
-                  <p className="text-sm text-primary-100 mt-1">
-                    Max discount Rs. 100
-                  </p>
-                </Card>
+            {/* Online Portals matching search */}
+            {matchingOnlinePortals.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Globe className="w-4 h-4 text-primary-600" />
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Online Portals
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {matchingOnlinePortals.map((portal) => (
+                    <button
+                      key={portal.id}
+                      onClick={() => handleMerchantSelect(portal)}
+                      className="w-full flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors text-left shadow-sm"
+                    >
+                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg font-semibold text-primary-600">
+                          {portal.name[0]}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {portal.name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {portal.category}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Search results */}
+            {isLoading ? (
+              <Loading text="Finding places..." />
+            ) : (
+              <PlacesList
+                merchants={results}
+                onSelect={handleMerchantSelect}
+                title="Search Results"
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {/* Popular Online Portals - Grid */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Globe className="w-4 h-4 text-primary-600" />
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Popular Online Portals
+                </h3>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {ONLINE_PORTALS.slice(0, 8).map((portal) => (
+                  <button
+                    key={portal.id}
+                    onClick={() => handleMerchantSelect(portal)}
+                    className="flex flex-col items-center p-3 bg-white dark:bg-gray-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors shadow-sm"
+                  >
+                    <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mb-2">
+                      <span className="text-lg font-semibold text-primary-600">
+                        {portal.name[0]}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-700 dark:text-gray-300 text-center truncate w-full">
+                      {portal.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nearby Places */}
+            {isLoading ? (
+              <Loading text="Finding nearby places..." />
+            ) : (
+              <PlacesList
+                merchants={results}
+                onSelect={handleMerchantSelect}
+                title="Nearby Places"
+              />
+            )}
+
+            {/* Hot offers section */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <Tag className="w-4 h-4" />
+                Hot Offers Today
+              </h3>
+              <Card className="p-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white border-0">
+                <p className="font-medium">20% off at Swiggy with HDFC</p>
+                <p className="text-sm text-primary-100 mt-1">
+                  Max discount Rs. 100
+                </p>
+              </Card>
+            </div>
           </>
         )}
       </div>
@@ -210,7 +251,6 @@ function BottomNav({ user }: { user: UserType | null }) {
 
   const tabs = [
     { icon: '🏠', label: 'Home', path: '/' },
-    { icon: '🔍', label: 'Search', path: '/search' },
     { icon: '💳', label: 'Cards', path: '/cards' },
     { icon: '⚙️', label: 'Settings', path: '/settings' },
   ];
