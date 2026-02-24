@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, User, Tag } from 'lucide-react';
+import { Menu, User, Tag, Shield } from 'lucide-react';
 import { SearchBar } from '../components/search/SearchBar';
 import { PlacesList } from '../components/search/PlacesList';
 import { Card } from '../components/common/Card';
@@ -8,7 +8,7 @@ import { Loading } from '../components/common/Loading';
 import { useAuth } from '../hooks/useAuth';
 import { useLocation } from '../hooks/useLocation';
 import { useSearch } from '../hooks/useRecommendation';
-import { Merchant } from '../types';
+import { Merchant, User as UserType } from '../types';
 
 export function Home() {
   const navigate = useNavigate();
@@ -127,12 +127,12 @@ export function Home() {
       </div>
 
       {/* Bottom Navigation */}
-      <BottomNav />
+      <BottomNav user={user} />
     </div>
   );
 }
 
-function BottomNav() {
+function BottomNav({ user }: { user: UserType | null }) {
   const navigate = useNavigate();
   const currentPath = window.location.pathname;
 
@@ -160,6 +160,19 @@ function BottomNav() {
             <span className="text-xs mt-1">{tab.label}</span>
           </button>
         ))}
+        {user?.is_admin && (
+          <button
+            onClick={() => navigate('/admin')}
+            className={`flex flex-col items-center py-2 px-4 ${
+              currentPath.startsWith('/admin')
+                ? 'text-primary-500'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <Shield className="w-5 h-5" />
+            <span className="text-xs mt-1">Admin</span>
+          </button>
+        )}
       </div>
     </div>
   );
