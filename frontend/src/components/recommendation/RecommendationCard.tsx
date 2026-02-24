@@ -1,4 +1,4 @@
-import { CreditCard, Check } from 'lucide-react';
+import { CreditCard, Check, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '../common/Card';
 import { CardRecommendation } from '../../types';
 
@@ -47,7 +47,7 @@ export function RecommendationCard({ recommendation, isBest = false }: Recommend
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2 text-accent-600 dark:text-accent-400">
                 <span className="font-bold text-xl">{recommendation.estimated_savings}</span>
-                <span className="text-sm">savings</span>
+                <span className="text-sm">reward</span>
               </div>
 
               <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -63,6 +63,18 @@ export function RecommendationCard({ recommendation, isBest = false }: Recommend
                     </div>
                   ))}
                 </div>
+              )}
+
+              {recommendation.source_url && (
+                <a
+                  href={recommendation.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-primary-500 mt-2"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  View T&C on bank website
+                </a>
               )}
             </div>
           </div>

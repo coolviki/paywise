@@ -53,6 +53,7 @@ class CardRecommendation(BaseModel):
     estimated_savings: str
     reason: str
     offers: List[str] = []  # List of offer descriptions from LLM
+    source_url: Optional[str] = None  # Link to bank's T&C page
 
 
 class RecommendationResponse(BaseModel):

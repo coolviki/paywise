@@ -7,9 +7,9 @@ from ..models.card import PaymentMethod
 class RecommendationAgent(BaseAgent):
     """Agent for generating payment recommendations using LLM."""
 
-    SYSTEM_PROMPT = """PayWise: India credit card expert. Recommend the card that gives the highest real value to the user.
-IMPORTANT: If a card has an ecosystem_benefit_rate for this merchant, that rate overrides its base_reward_rate — always prefer ecosystem benefits over generic rates.
-JSON only, be brief."""
+    SYSTEM_PROMPT = """PayWise: India credit card expert. Recommend the card with highest rewards.
+CRITICAL: If a card has ecosystem_benefit_rate, USE THAT EXACT RATE in your response. It overrides base_reward_rate.
+JSON only, be brief. Always show the actual percentage rate in estimated_savings."""
 
     # Category mapping for better context
     CATEGORY_HINTS = {
@@ -96,8 +96,8 @@ JSON only, be brief."""
 
         prompt = f"""{category_type.upper()}: {place_name}, {amount_str}{ecosystem_note}
 Cards:{json.dumps(cards_info)}
-Reply with ONLY this JSON (no offers array, keep reason under 10 words):
-{{"best_card":{{"card_id":"id","estimated_savings":"Rs.X","reason":"short {category_type} reason"}},"insight":"tip"}}"""
+Reply ONLY with JSON. For estimated_savings use format "X% reward_type" with the ACTUAL rate from ecosystem_benefit_rate or base_reward_rate:
+{{"best_card":{{"card_id":"id","estimated_savings":"5% cashback","reason":"max 8 words"}},"insight":"one sentence tip"}}"""
 
         try:
             response = await agent.call_llm(prompt, system_prompt=RecommendationAgent.SYSTEM_PROMPT)

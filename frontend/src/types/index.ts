@@ -83,6 +83,7 @@ export interface CardRecommendation {
   estimated_savings: string;
   reason: string;
   offers: string[];  // List of offer descriptions from LLM
+  source_url?: string;  // Link to bank's T&C page
 }
 
 export interface Recommendation {

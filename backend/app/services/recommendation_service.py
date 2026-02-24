@@ -13,6 +13,17 @@ from ..schemas.recommendation import (
 from ..agents.recommendation_agent import RecommendationAgent
 
 
+# Bank source URLs for T&C
+BANK_SOURCE_URLS = {
+    "HDFC Bank": "https://www.hdfcbank.com/personal/pay/cards/credit-cards",
+    "ICICI Bank": "https://www.icicibank.com/personal-banking/cards/credit-card",
+    "SBI Card": "https://www.sbicard.com/en/personal/credit-cards.page",
+    "Axis Bank": "https://www.axisbank.com/retail/cards/credit-card",
+    "Kotak Bank": "https://www.kotak.com/en/personal-banking/cards/credit-cards.html",
+    "AMEX": "https://www.americanexpress.com/in/credit-cards/",
+}
+
+
 def _resolve_ecosystem_benefits(
     db: Session,
     place_name: str,
@@ -144,13 +155,15 @@ class RecommendationService:
             best_pm = payment_methods[0]
             best_card_id = str(best_pm.card_id)
 
+        best_bank_name = best_pm.card.bank.name if best_pm.card.bank else "Unknown"
         best_option = CardRecommendation(
             card_id=UUID(best_card_id) if best_card_id else best_pm.card_id,
             card_name=best_pm.card.name,
-            bank_name=best_pm.card.bank.name if best_pm.card.bank else "Unknown",
+            bank_name=best_bank_name,
             estimated_savings=best_data.get("estimated_savings", "Check for offers"),
             reason=best_data.get("reason", "Best available option"),
             offers=best_data.get("offers", []),
+            source_url=BANK_SOURCE_URLS.get(best_bank_name),
         )
 
         # Parse alternatives
@@ -160,14 +173,16 @@ class RecommendationService:
             alt_pm = card_lookup.get(alt_card_id)
 
             if alt_pm and alt_card_id != best_card_id:
+                alt_bank_name = alt_pm.card.bank.name if alt_pm.card.bank else "Unknown"
                 alternatives.append(
                     CardRecommendation(
                         card_id=UUID(alt_card_id),
                         card_name=alt_pm.card.name,
-                        bank_name=alt_pm.card.bank.name if alt_pm.card.bank else "Unknown",
+                        bank_name=alt_bank_name,
                         estimated_savings=alt_data.get("estimated_savings", ""),
                         reason=alt_data.get("reason", ""),
                         offers=alt_data.get("offers", []),
+                        source_url=BANK_SOURCE_URLS.get(alt_bank_name),
                     )
                 )
 
