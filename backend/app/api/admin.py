@@ -39,7 +39,7 @@ async def list_brands(
             name=brand.name,
             code=brand.code,
             description=brand.description,
-            is_active=brand.is_active,
+            is_active=brand.is_active if brand.is_active is not None else True,
             keyword_count=len(brand.keywords),
         ))
     return result
@@ -216,7 +216,7 @@ async def list_ecosystem_benefits(
             benefit_rate=b.benefit_rate,
             benefit_type=b.benefit_type,
             description=b.description,
-            is_active=b.is_active,
+            is_active=b.is_active if b.is_active is not None else True,
             created_at=b.created_at,
         ))
     return result
@@ -268,7 +268,7 @@ async def create_ecosystem_benefit(
         benefit_rate=benefit.benefit_rate,
         benefit_type=benefit.benefit_type,
         description=benefit.description,
-        is_active=benefit.is_active,
+        is_active=benefit.is_active if benefit.is_active is not None else True,
         created_at=benefit.created_at,
     )
 
@@ -309,7 +309,7 @@ async def update_ecosystem_benefit(
         benefit_rate=benefit.benefit_rate,
         benefit_type=benefit.benefit_type,
         description=benefit.description,
-        is_active=benefit.is_active,
+        is_active=benefit.is_active if benefit.is_active is not None else True,
         created_at=benefit.created_at,
     )
 

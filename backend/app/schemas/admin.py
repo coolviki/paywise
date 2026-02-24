@@ -40,8 +40,8 @@ class BrandResponse(BaseModel):
     name: str
     code: str
     description: Optional[str] = None
-    is_active: bool
-    created_at: datetime
+    is_active: bool = True
+    created_at: Optional[datetime] = None
     keywords: List[KeywordResponse] = []
 
     class Config:
@@ -53,7 +53,7 @@ class BrandListResponse(BaseModel):
     name: str
     code: str
     description: Optional[str] = None
-    is_active: bool
+    is_active: bool = True
     keyword_count: int = 0
 
     class Config:
@@ -88,8 +88,8 @@ class EcosystemBenefitResponse(BaseModel):
     benefit_rate: Decimal
     benefit_type: str
     description: Optional[str] = None
-    is_active: bool
-    created_at: datetime
+    is_active: bool = True  # Default to True if None in database
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
