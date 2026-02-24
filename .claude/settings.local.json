@@ -7,7 +7,13 @@
       "Bash(python -m app.seed_data:*)",
       "Bash(curl:*)",
       "Bash(python3:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "WebSearch",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nSwitch to Google Gemini LLM and expand credit card database\n\n- Replace Anthropic with Google Gemini \\(gemini-2.5-flash model\\)\n- Update Google Places API to use new Places API \\(New\\) endpoint\n- Expand credit card seed data from 26 to 148 cards across 14 banks\n- Add HSBC bank and cards\n- Remove deprecated OfferResponse schema import\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(DATABASE_URL='postgresql://postgres:QgwZjRoihepcIJVgoOIRHWvkeelqXcWv@yamanote.proxy.rlwy.net:26258/railway' python -m app.seed_data:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)"
     ]
   }
 }

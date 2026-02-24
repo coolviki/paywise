@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Pencil, Trash2, CheckCircle, XCircle, AlertCircle, ExternalLink, Tag, CreditCard } from 'lucide-react';
+import { Check, X, Pencil, Trash2, CheckCircle, XCircle, AlertCircle, ExternalLink, Tag, CreditCard, Wallet } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
-import { PendingChange, PendingBrand } from '../../types';
+import { PendingChange, PendingBrand, PendingCard as PendingCardType } from '../../types';
 import * as adminService from '../../services/adminService';
 
-type TabType = 'benefits' | 'brands';
+type TabType = 'benefits' | 'brands' | 'cards';
 
 export function PendingTab() {
   const [activeTab, setActiveTab] = useState<TabType>('benefits');
   const [changes, setChanges] = useState<PendingChange[]>([]);
   const [brands, setBrands] = useState<PendingBrand[]>([]);
+  const [cards, setCards] = useState<PendingCardType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [editingChange, setEditingChange] = useState<PendingChange | null>(null);
   const [editingBrand, setEditingBrand] = useState<PendingBrand | null>(null);
+  const [editingCard, setEditingCard] = useState<PendingCardType | null>(null);
 
   useEffect(() => {
     loadData();
@@ -27,9 +29,12 @@ export function PendingTab() {
       if (activeTab === 'benefits') {
         const data = await adminService.getPendingChanges(statusFilter || undefined);
         setChanges(data);
-      } else {
+      } else if (activeTab === 'brands') {
         const data = await adminService.getPendingBrands(statusFilter || undefined);
         setBrands(data);
+      } else {
+        const data = await adminService.getPendingCards(statusFilter || undefined);
+        setCards(data);
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load pending items');
@@ -107,6 +112,35 @@ export function PendingTab() {
     }
   };
 
+  // Cards handlers
+  const handleApproveCard = async (cardId: string) => {
+    try {
+      await adminService.approvePendingCard(cardId);
+      setCards(cards.filter((c) => c.id !== cardId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to approve card');
+    }
+  };
+
+  const handleRejectCard = async (cardId: string) => {
+    try {
+      await adminService.rejectPendingCard(cardId);
+      setCards(cards.filter((c) => c.id !== cardId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to reject card');
+    }
+  };
+
+  const handleDeleteCard = async (cardId: string) => {
+    if (!confirm('Are you sure you want to delete this pending card?')) return;
+    try {
+      await adminService.deletePendingCard(cardId);
+      setCards(cards.filter((c) => c.id !== cardId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete card');
+    }
+  };
+
   const getChangeTypeBadge = (type: string) => {
     switch (type) {
       case 'new':
@@ -159,6 +193,7 @@ export function PendingTab() {
 
   const pendingBenefitsCount = changes.filter((c) => c.status === 'pending').length;
   const pendingBrandsCount = brands.filter((b) => b.status === 'pending').length;
+  const pendingCardsCount = cards.filter((c) => c.status === 'pending').length;
 
   if (error) {
     return <div className="text-center py-8 text-red-500">{error}</div>;
@@ -200,18 +235,36 @@ export function PendingTab() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('cards')}
+          className={`flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
+            activeTab === 'cards'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+          }`}
+        >
+          <Wallet className="w-4 h-4" />
+          Cards
+          {pendingCardsCount > 0 && (
+            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400 rounded-full text-xs">
+              {pendingCardsCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Pending {activeTab === 'benefits' ? 'Benefits' : 'Brands'} ({activeTab === 'benefits' ? changes.length : brands.length})
+            Pending {activeTab === 'benefits' ? 'Benefits' : activeTab === 'brands' ? 'Brands' : 'Cards'} ({activeTab === 'benefits' ? changes.length : activeTab === 'brands' ? brands.length : cards.length})
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {activeTab === 'benefits'
               ? 'Review and approve scraped ecosystem benefit changes'
-              : 'Review and approve new brands discovered by the scraper'}
+              : activeTab === 'brands'
+              ? 'Review and approve new brands discovered by the scraper'
+              : 'Review and approve new cards discovered by the scraper'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -235,6 +288,99 @@ export function PendingTab() {
 
       {isLoading ? (
         <div className="text-center py-8 text-gray-500">Loading...</div>
+      ) : activeTab === 'cards' ? (
+        // Cards List
+        cards.length === 0 ? (
+          <Card className="p-12 text-center">
+            <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No Pending Cards
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              {statusFilter === 'pending'
+                ? 'All card changes have been reviewed. Run the scraper to discover new cards.'
+                : `No ${statusFilter} cards found.`}
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {cards.map((card) => (
+              <Card key={card.id} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      {getChangeTypeBadge(card.change_type)}
+                      {getStatusBadge(card.status)}
+                      {card.source_bank && (
+                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs">
+                          from {card.source_bank.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      {card.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Bank: {card.bank_name}
+                    </p>
+
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Type</p>
+                        <p className="font-medium capitalize">{card.card_type}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Network</p>
+                        <p className="font-medium capitalize">{card.card_network || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Annual Fee</p>
+                        <p className="font-medium">{card.annual_fee ? `₹${card.annual_fee}` : '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Base Rate</p>
+                        <p className="font-medium">{card.base_reward_rate ? `${card.base_reward_rate}%` : '-'}</p>
+                      </div>
+                    </div>
+
+                    {card.source_url && (
+                      <a
+                        href={card.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-sm text-primary-600 hover:text-primary-700"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        View Source
+                      </a>
+                    )}
+
+                    <p className="mt-2 text-xs text-gray-400">
+                      Discovered: {new Date(card.scraped_at).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {card.status === 'pending' && (
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button size="sm" onClick={() => handleApproveCard(card.id)} leftIcon={<Check className="w-4 h-4" />}>
+                        Approve
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleRejectCard(card.id)} leftIcon={<X className="w-4 h-4" />}>
+                        Reject
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingCard(card)} leftIcon={<Pencil className="w-4 h-4" />}>
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteCard(card.id)} leftIcon={<Trash2 className="w-4 h-4" />}>
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       ) : activeTab === 'benefits' ? (
         // Benefits List
         changes.length === 0 ? (
@@ -444,6 +590,18 @@ export function PendingTab() {
           onClose={() => setEditingBrand(null)}
           onSuccess={() => {
             setEditingBrand(null);
+            loadData();
+          }}
+        />
+      )}
+
+      {/* Edit Card Modal */}
+      {editingCard && (
+        <EditCardModal
+          card={editingCard}
+          onClose={() => setEditingCard(null)}
+          onSuccess={() => {
+            setEditingCard(null);
             loadData();
           }}
         />
@@ -666,6 +824,185 @@ function EditBrandModal({
               onChange={(e) => setKeywords(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="e.g., swiggy, swiggy app"
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-500">{error}</p>}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={isLoading} className="flex-1">
+              Update
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditCardModal({
+  card,
+  onClose,
+  onSuccess,
+}: {
+  card: PendingCardType;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState(card.name);
+  const [cardType, setCardType] = useState(card.card_type);
+  const [cardNetwork, setCardNetwork] = useState(card.card_network || '');
+  const [annualFee, setAnnualFee] = useState(card.annual_fee?.toString() || '');
+  const [rewardType, setRewardType] = useState(card.reward_type || '');
+  const [baseRewardRate, setBaseRewardRate] = useState(card.base_reward_rate?.toString() || '');
+  const [termsUrl, setTermsUrl] = useState(card.terms_url || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await adminService.updatePendingCard(card.id, {
+        name,
+        card_type: cardType,
+        card_network: cardNetwork || undefined,
+        annual_fee: annualFee ? parseFloat(annualFee) : undefined,
+        reward_type: rewardType || undefined,
+        base_reward_rate: baseRewardRate ? parseFloat(baseRewardRate) : undefined,
+        terms_url: termsUrl || undefined,
+      });
+      onSuccess();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update card');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Edit Pending Card
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Bank: <strong>{card.bank_name}</strong>
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Card Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Card Type
+              </label>
+              <select
+                value={cardType}
+                onChange={(e) => setCardType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Network
+              </label>
+              <select
+                value={cardNetwork}
+                onChange={(e) => setCardNetwork(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="">Select Network</option>
+                <option value="visa">Visa</option>
+                <option value="mastercard">Mastercard</option>
+                <option value="rupay">RuPay</option>
+                <option value="amex">Amex</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Annual Fee (₹)
+              </label>
+              <input
+                type="number"
+                value={annualFee}
+                onChange={(e) => setAnnualFee(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Reward Type
+              </label>
+              <select
+                value={rewardType}
+                onChange={(e) => setRewardType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="">None</option>
+                <option value="cashback">Cashback</option>
+                <option value="points">Points</option>
+                <option value="miles">Miles</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Base Reward Rate (%)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={baseRewardRate}
+              onChange={(e) => setBaseRewardRate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Terms URL
+            </label>
+            <input
+              type="url"
+              value={termsUrl}
+              onChange={(e) => setTermsUrl(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="https://..."
             />
           </div>
 

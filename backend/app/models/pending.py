@@ -55,3 +55,36 @@ class PendingBrandChange(Base):
 
     def __repr__(self):
         return f"<PendingBrandChange {self.name} ({self.status})>"
+
+
+class PendingCardChange(Base):
+    """Pending card changes awaiting admin approval."""
+    __tablename__ = "pending_card_changes"
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    bank_id = Column(UUID, ForeignKey("banks.id", ondelete="CASCADE"), nullable=False)
+    existing_card_id = Column(UUID, ForeignKey("cards.id", ondelete="SET NULL"), nullable=True)  # For updates
+    name = Column(String(255), nullable=False)
+    card_type = Column(String(50), nullable=False)  # credit, debit
+    card_network = Column(String(50), nullable=True)  # visa, mastercard, rupay, amex
+    annual_fee = Column(Numeric(10, 2), nullable=True)
+    reward_type = Column(String(50), nullable=True)  # cashback, points, miles
+    base_reward_rate = Column(Numeric(5, 2), nullable=True)
+    terms_url = Column(String(500), nullable=True)
+    change_type = Column(String(20), nullable=False)  # 'new', 'update'
+    old_values = Column(JSONB, nullable=True)  # For updates, store previous values
+    source_url = Column(String(500), nullable=True)
+    source_bank = Column(String(50), nullable=True)  # hdfc, icici, sbi
+    status = Column(String(20), nullable=False, default="pending")  # 'pending', 'approved', 'rejected'
+    scraped_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(UUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    bank = relationship("Bank")
+    existing_card = relationship("Card", foreign_keys=[existing_card_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+    def __repr__(self):
+        return f"<PendingCardChange {self.name} ({self.change_type}, {self.status})>"

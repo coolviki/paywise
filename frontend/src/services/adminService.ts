@@ -1,5 +1,5 @@
 import api from './api';
-import { Brand, BrandListItem, EcosystemBenefit, CardSimple, CardFull, BankSimple, PendingChange, ScraperStatus, PendingBrand } from '../types';
+import { Brand, BrandListItem, EcosystemBenefit, CardSimple, CardFull, BankSimple, PendingChange, ScraperStatus, PendingBrand, PendingCard } from '../types';
 
 // Brands
 export const getBrands = async (): Promise<BrandListItem[]> => {
@@ -232,4 +232,46 @@ export const rejectPendingBrand = async (
 
 export const deletePendingBrand = async (brandId: string): Promise<void> => {
   await api.delete(`/admin/pending-brands/${brandId}`);
+};
+
+// Pending Cards
+export const getPendingCards = async (status?: string): Promise<PendingCard[]> => {
+  const response = await api.get('/admin/pending-cards', {
+    params: status ? { status_filter: status } : undefined,
+  });
+  return response.data;
+};
+
+export const updatePendingCard = async (
+  cardId: string,
+  data: {
+    name?: string;
+    card_type?: string;
+    card_network?: string;
+    annual_fee?: number;
+    reward_type?: string;
+    base_reward_rate?: number;
+    terms_url?: string;
+  }
+): Promise<PendingCard> => {
+  const response = await api.put(`/admin/pending-cards/${cardId}`, data);
+  return response.data;
+};
+
+export const approvePendingCard = async (
+  cardId: string
+): Promise<{ message: string }> => {
+  const response = await api.post(`/admin/pending-cards/${cardId}/approve`);
+  return response.data;
+};
+
+export const rejectPendingCard = async (
+  cardId: string
+): Promise<{ message: string }> => {
+  const response = await api.post(`/admin/pending-cards/${cardId}/reject`);
+  return response.data;
+};
+
+export const deletePendingCard = async (cardId: string): Promise<void> => {
+  await api.delete(`/admin/pending-cards/${cardId}`);
 };

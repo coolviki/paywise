@@ -206,6 +206,7 @@ export interface ScraperStatus {
   benefits_found: number;
   pending_created: number;
   brands_created: number;
+  cards_created: number;
   errors: string[];
 }
 
@@ -215,6 +216,27 @@ export interface PendingBrand {
   code: string;
   description?: string;
   keywords: string[];
+  source_url?: string;
+  source_bank?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  scraped_at: string;
+  reviewed_at?: string;
+}
+
+export interface PendingCard {
+  id: string;
+  bank_id: string;
+  bank_name: string;
+  existing_card_id?: string;
+  name: string;
+  card_type: string;
+  card_network?: string;
+  annual_fee?: number;
+  reward_type?: string;
+  base_reward_rate?: number;
+  terms_url?: string;
+  change_type: 'new' | 'update';
+  old_values?: Record<string, any>;
   source_url?: string;
   source_bank?: string;
   status: 'pending' | 'approved' | 'rejected';

@@ -8,7 +8,7 @@ from ..core.security import get_current_admin
 from ..models.user import User
 from ..models.merchant import Brand, BrandKeyword
 from ..models.card import Card, Bank, CardEcosystemBenefit
-from ..models.pending import PendingEcosystemChange, PendingBrandChange
+from ..models.pending import PendingEcosystemChange, PendingBrandChange, PendingCardChange
 from ..schemas.admin import (
     BrandCreate, BrandUpdate, BrandResponse, BrandListResponse,
     KeywordCreate, KeywordResponse,
@@ -16,6 +16,7 @@ from ..schemas.admin import (
     CardSimple, CardCreate, CardUpdate, CardResponse, BankSimple,
     PendingChangeResponse, PendingChangeUpdate, ScraperStatusResponse,
     PendingBrandResponse, PendingBrandUpdate,
+    PendingCardResponse, PendingCardUpdate, PendingCardCreate,
 )
 from ..services.scraper import ScraperService
 
@@ -876,3 +877,264 @@ async def delete_pending_brand(
 
     if not success:
         raise HTTPException(status_code=404, detail="Pending brand not found")
+
+
+# ============================================
+# PENDING CARDS ENDPOINTS
+# ============================================
+
+@router.get("/pending-cards", response_model=List[PendingCardResponse])
+async def list_pending_cards(
+    status_filter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """
+    List pending card changes.
+
+    Args:
+        status_filter: Optional status filter (pending, approved, rejected)
+    """
+    query = db.query(PendingCardChange).options(
+        joinedload(PendingCardChange.bank),
+    )
+
+    if status_filter:
+        query = query.filter(PendingCardChange.status == status_filter)
+
+    cards = query.order_by(PendingCardChange.created_at.desc()).all()
+
+    return [
+        PendingCardResponse(
+            id=c.id,
+            bank_id=c.bank_id,
+            bank_name=c.bank.name if c.bank else "Unknown",
+            existing_card_id=c.existing_card_id,
+            name=c.name,
+            card_type=c.card_type,
+            card_network=c.card_network,
+            annual_fee=c.annual_fee,
+            reward_type=c.reward_type,
+            base_reward_rate=c.base_reward_rate,
+            terms_url=c.terms_url,
+            change_type=c.change_type,
+            old_values=c.old_values,
+            source_url=c.source_url,
+            source_bank=c.source_bank,
+            status=c.status,
+            scraped_at=c.scraped_at,
+            reviewed_at=c.reviewed_at,
+        )
+        for c in cards
+    ]
+
+
+@router.post("/pending-cards", response_model=PendingCardResponse)
+async def create_pending_card(
+    data: PendingCardCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Manually create a pending card for approval."""
+    # Verify bank exists
+    bank = db.query(Bank).filter(Bank.id == data.bank_id).first()
+    if not bank:
+        raise HTTPException(status_code=404, detail="Bank not found")
+
+    # Check if card already exists
+    existing = db.query(Card).filter(
+        Card.bank_id == data.bank_id,
+        Card.name == data.name,
+    ).first()
+
+    pending = PendingCardChange(
+        bank_id=data.bank_id,
+        existing_card_id=existing.id if existing else None,
+        name=data.name,
+        card_type=data.card_type,
+        card_network=data.card_network,
+        annual_fee=data.annual_fee,
+        reward_type=data.reward_type,
+        base_reward_rate=data.base_reward_rate,
+        terms_url=data.terms_url,
+        change_type="update" if existing else "new",
+        source_url=data.source_url,
+        source_bank=bank.code,
+        status="pending",
+    )
+    db.add(pending)
+    db.commit()
+    db.refresh(pending)
+
+    return PendingCardResponse(
+        id=pending.id,
+        bank_id=pending.bank_id,
+        bank_name=bank.name,
+        existing_card_id=pending.existing_card_id,
+        name=pending.name,
+        card_type=pending.card_type,
+        card_network=pending.card_network,
+        annual_fee=pending.annual_fee,
+        reward_type=pending.reward_type,
+        base_reward_rate=pending.base_reward_rate,
+        terms_url=pending.terms_url,
+        change_type=pending.change_type,
+        old_values=pending.old_values,
+        source_url=pending.source_url,
+        source_bank=pending.source_bank,
+        status=pending.status,
+        scraped_at=pending.scraped_at,
+        reviewed_at=pending.reviewed_at,
+    )
+
+
+@router.put("/pending-cards/{card_id}", response_model=PendingCardResponse)
+async def update_pending_card(
+    card_id: UUID,
+    data: PendingCardUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Update a pending card before approval."""
+    pending = db.query(PendingCardChange).filter(
+        PendingCardChange.id == card_id,
+        PendingCardChange.status == "pending",
+    ).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending card not found or already processed")
+
+    if data.name is not None:
+        pending.name = data.name
+    if data.card_type is not None:
+        pending.card_type = data.card_type
+    if data.card_network is not None:
+        pending.card_network = data.card_network
+    if data.annual_fee is not None:
+        pending.annual_fee = data.annual_fee
+    if data.reward_type is not None:
+        pending.reward_type = data.reward_type
+    if data.base_reward_rate is not None:
+        pending.base_reward_rate = data.base_reward_rate
+    if data.terms_url is not None:
+        pending.terms_url = data.terms_url
+
+    db.commit()
+    db.refresh(pending)
+
+    bank = db.query(Bank).filter(Bank.id == pending.bank_id).first()
+
+    return PendingCardResponse(
+        id=pending.id,
+        bank_id=pending.bank_id,
+        bank_name=bank.name if bank else "Unknown",
+        existing_card_id=pending.existing_card_id,
+        name=pending.name,
+        card_type=pending.card_type,
+        card_network=pending.card_network,
+        annual_fee=pending.annual_fee,
+        reward_type=pending.reward_type,
+        base_reward_rate=pending.base_reward_rate,
+        terms_url=pending.terms_url,
+        change_type=pending.change_type,
+        old_values=pending.old_values,
+        source_url=pending.source_url,
+        source_bank=pending.source_bank,
+        status=pending.status,
+        scraped_at=pending.scraped_at,
+        reviewed_at=pending.reviewed_at,
+    )
+
+
+@router.post("/pending-cards/{card_id}/approve")
+async def approve_pending_card(
+    card_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Approve a pending card and create/update it in the database."""
+    from datetime import datetime
+
+    pending = db.query(PendingCardChange).filter(
+        PendingCardChange.id == card_id,
+        PendingCardChange.status == "pending",
+    ).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending card not found or already processed")
+
+    if pending.change_type == "new":
+        # Create new card
+        card = Card(
+            bank_id=pending.bank_id,
+            name=pending.name,
+            card_type=pending.card_type,
+            card_network=pending.card_network,
+            annual_fee=pending.annual_fee,
+            reward_type=pending.reward_type,
+            base_reward_rate=pending.base_reward_rate,
+            terms_url=pending.terms_url,
+            is_active=True,
+        )
+        db.add(card)
+    else:
+        # Update existing card
+        card = db.query(Card).filter(Card.id == pending.existing_card_id).first()
+        if card:
+            card.name = pending.name
+            card.card_type = pending.card_type
+            card.card_network = pending.card_network
+            card.annual_fee = pending.annual_fee
+            card.reward_type = pending.reward_type
+            card.base_reward_rate = pending.base_reward_rate
+            card.terms_url = pending.terms_url
+
+    # Update pending status
+    pending.status = "approved"
+    pending.reviewed_at = datetime.utcnow()
+    pending.reviewed_by = admin.id
+
+    db.commit()
+
+    return {"message": f"Card '{pending.name}' approved and {'created' if pending.change_type == 'new' else 'updated'}"}
+
+
+@router.post("/pending-cards/{card_id}/reject")
+async def reject_pending_card(
+    card_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Reject a pending card."""
+    from datetime import datetime
+
+    pending = db.query(PendingCardChange).filter(
+        PendingCardChange.id == card_id,
+        PendingCardChange.status == "pending",
+    ).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending card not found or already processed")
+
+    pending.status = "rejected"
+    pending.reviewed_at = datetime.utcnow()
+    pending.reviewed_by = admin.id
+    db.commit()
+
+    return {"message": "Card rejected"}
+
+
+@router.delete("/pending-cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_pending_card(
+    card_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Delete a pending card."""
+    pending = db.query(PendingCardChange).filter(PendingCardChange.id == card_id).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending card not found")
+
+    db.delete(pending)
+    db.commit()

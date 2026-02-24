@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from ...models import Card, Brand, BrandKeyword, CardEcosystemBenefit, PendingEcosystemChange, PendingBrandChange
+from ...models import Card, Bank, Brand, BrandKeyword, CardEcosystemBenefit, PendingEcosystemChange, PendingBrandChange, PendingCardChange
 from .base import ScrapedBenefit
 from .hdfc import HDFCScraper
 from .icici import ICICIScraper
@@ -44,6 +44,7 @@ class ScraperStatus:
         self.benefits_found: int = 0
         self.pending_created: int = 0
         self.brands_created: int = 0
+        self.cards_created: int = 0
         self.errors: List[str] = []
 
 
@@ -85,6 +86,7 @@ class ScraperService:
             scraper_status.benefits_found = 0
             scraper_status.pending_created = 0
             scraper_status.brands_created = 0
+            scraper_status.cards_created = 0
 
             scrapers_to_run = []
             if bank:
@@ -124,6 +126,7 @@ class ScraperService:
                 "benefits_found": scraper_status.benefits_found,
                 "pending_created": scraper_status.pending_created,
                 "brands_created": scraper_status.brands_created,
+                "cards_created": scraper_status.cards_created,
                 "errors": scraper_status.errors
             }
 
@@ -142,13 +145,21 @@ class ScraperService:
         global scraper_status
         pending_count = 0
         pending_brands_created = set()  # Track brands we've already created pending entries for
+        pending_cards_created = set()  # Track cards we've already created pending entries for
 
         for benefit in benefits:
             try:
                 # Find matching card
                 card = self._find_card(benefit.card_name)
                 if not card:
-                    self.logger.debug(f"Card not found: {benefit.card_name}")
+                    # Create pending card if not already pending
+                    card_key = f"{scraper_status.current_bank}:{benefit.card_name}"
+                    if card_key not in pending_cards_created:
+                        created = self._create_pending_card(benefit.card_name, benefit.source_url)
+                        if created:
+                            pending_cards_created.add(card_key)
+                            scraper_status.cards_created += 1
+                    self.logger.debug(f"Card not found, created pending: {benefit.card_name}")
                     continue
 
                 # Find brand
@@ -289,6 +300,65 @@ class ScraperService:
                 PendingEcosystemChange.status == "pending"
             )
         ).first()
+
+    def _create_pending_card(self, card_name: str, source_url: Optional[str] = None) -> bool:
+        """Create a pending card change for a new card discovered during scraping."""
+        global scraper_status
+
+        # Determine bank from current scraper
+        bank_code = scraper_status.current_bank
+        if not bank_code:
+            return False
+
+        bank = self.db.query(Bank).filter(Bank.code == bank_code).first()
+        if not bank:
+            self.logger.error(f"Bank not found: {bank_code}")
+            return False
+
+        # Check if there's already a pending card with this name for this bank
+        existing_pending = self.db.query(PendingCardChange).filter(
+            and_(
+                PendingCardChange.bank_id == bank.id,
+                PendingCardChange.name.ilike(f"%{card_name}%"),
+                PendingCardChange.status == "pending"
+            )
+        ).first()
+
+        if existing_pending:
+            self.logger.debug(f"Pending card already exists: {card_name}")
+            return False
+
+        # Determine card type based on name patterns
+        card_type = "credit"
+        if "debit" in card_name.lower():
+            card_type = "debit"
+
+        # Determine network based on name patterns
+        card_network = None
+        name_lower = card_name.lower()
+        if "visa" in name_lower:
+            card_network = "visa"
+        elif "mastercard" in name_lower or "master card" in name_lower:
+            card_network = "mastercard"
+        elif "rupay" in name_lower:
+            card_network = "rupay"
+        elif "amex" in name_lower or "american express" in name_lower:
+            card_network = "amex"
+
+        # Create pending card
+        pending = PendingCardChange(
+            bank_id=bank.id,
+            name=card_name,
+            card_type=card_type,
+            card_network=card_network,
+            change_type="new",
+            source_url=source_url,
+            source_bank=bank_code,
+            status="pending"
+        )
+        self.db.add(pending)
+        self.logger.info(f"Created pending card: {card_name} for {bank.name}")
+        return True
 
     def get_pending_changes(self, status: Optional[str] = None) -> List[PendingEcosystemChange]:
         """Get all pending changes, optionally filtered by status."""
@@ -439,6 +509,7 @@ class ScraperService:
             "benefits_found": scraper_status.benefits_found,
             "pending_created": scraper_status.pending_created,
             "brands_created": scraper_status.brands_created,
+            "cards_created": scraper_status.cards_created,
             "errors": scraper_status.errors
         }
 

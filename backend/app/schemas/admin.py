@@ -224,3 +224,54 @@ class PendingBrandUpdate(BaseModel):
     code: Optional[str] = None
     description: Optional[str] = None
     keywords: Optional[List[str]] = None
+
+
+# ============================================
+# Pending Card Schemas
+# ============================================
+
+class PendingCardResponse(BaseModel):
+    id: UUID
+    bank_id: UUID
+    bank_name: str
+    existing_card_id: Optional[UUID] = None
+    name: str
+    card_type: str
+    card_network: Optional[str] = None
+    annual_fee: Optional[Decimal] = None
+    reward_type: Optional[str] = None
+    base_reward_rate: Optional[Decimal] = None
+    terms_url: Optional[str] = None
+    change_type: str  # 'new', 'update'
+    old_values: Optional[dict] = None
+    source_url: Optional[str] = None
+    source_bank: Optional[str] = None
+    status: str  # 'pending', 'approved', 'rejected'
+    scraped_at: datetime
+    reviewed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PendingCardUpdate(BaseModel):
+    name: Optional[str] = None
+    card_type: Optional[str] = None
+    card_network: Optional[str] = None
+    annual_fee: Optional[Decimal] = None
+    reward_type: Optional[str] = None
+    base_reward_rate: Optional[Decimal] = None
+    terms_url: Optional[str] = None
+
+
+class PendingCardCreate(BaseModel):
+    """For manually adding a pending card (e.g., from scraper)."""
+    bank_id: UUID
+    name: str
+    card_type: str = "credit"
+    card_network: Optional[str] = None
+    annual_fee: Optional[Decimal] = None
+    reward_type: Optional[str] = None
+    base_reward_rate: Optional[Decimal] = None
+    terms_url: Optional[str] = None
+    source_url: Optional[str] = None
