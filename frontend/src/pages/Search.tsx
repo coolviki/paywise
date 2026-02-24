@@ -102,9 +102,7 @@ export function Search() {
 
       {/* Content */}
       <div className="p-4">
-        {isLoading ? (
-          <Loading text="Searching..." />
-        ) : searchQuery.length < 2 ? (
+        {searchQuery.length < 2 ? (
           <div className="space-y-6">
             {/* Popular Online Portals */}
             <div>
@@ -174,8 +172,15 @@ export function Search() {
               </div>
             )}
 
+            {/* Loading indicator for places search */}
+            {isLoading && (
+              <div className="mb-4">
+                <Loading text="Searching nearby places..." />
+              </div>
+            )}
+
             {/* Near You section */}
-            {results.some((m) => (m.locations || []).some((l) => l.distance_km !== undefined)) && (
+            {!isLoading && results.some((m) => (m.locations || []).some((l) => l.distance_km !== undefined)) && (
               <PlacesList
                 merchants={results.filter((m) =>
                   (m.locations || []).some((l) => l.distance_km !== undefined)
@@ -186,7 +191,7 @@ export function Search() {
             )}
 
             {/* All Locations section */}
-            {results.some((m) => (m.locations || []).length === 0 || m.is_chain) && (
+            {!isLoading && results.some((m) => (m.locations || []).length === 0 || m.is_chain) && (
               <div className="mt-6">
                 <PlacesList
                   merchants={results.filter(
@@ -199,7 +204,7 @@ export function Search() {
             )}
 
             {/* No results message */}
-            {matchingOnlinePortals.length === 0 && (!Array.isArray(results) || results.length === 0) && (
+            {!isLoading && matchingOnlinePortals.length === 0 && (!Array.isArray(results) || results.length === 0) && (
               <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                 <p>No results found for "{searchQuery}"</p>
               </div>
