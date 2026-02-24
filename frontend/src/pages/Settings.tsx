@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  Shield,
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -114,6 +115,24 @@ export function Settings() {
             />
           </Card>
         </section>
+
+        {/* Admin Section (only for admins) */}
+        {user?.is_admin && (
+          <section>
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">
+              Admin
+            </h2>
+            <Card>
+              <SettingsItem
+                icon={<Shield className="w-5 h-5" />}
+                label="Admin Dashboard"
+                value="Manage ecosystem benefits"
+                onClick={() => navigate('/admin')}
+                isLast
+              />
+            </Card>
+          </section>
+        )}
 
         {/* About Section */}
         <section>

@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     auth_provider: str
     created_at: datetime
     last_login: Optional[datetime] = None
+    is_admin: bool = False
 
     class Config:
         from_attributes = True

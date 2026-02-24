@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { store } from './store/store';
 import { useAuth } from './hooks/useAuth';
 import { Loading } from './components/common/Loading';
+import { AdminRoute } from './components/common/AdminRoute';
 
 // Pages
 import { Login } from './pages/Login';
@@ -13,6 +14,7 @@ import { Search } from './pages/Search';
 import { Recommendation } from './pages/Recommendation';
 import { MyCards } from './pages/MyCards';
 import { Settings } from './pages/Settings';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -88,6 +90,14 @@ function AppRoutes() {
           <ProtectedRoute>
             <Settings />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/*"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

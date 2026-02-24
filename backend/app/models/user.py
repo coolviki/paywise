@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 from ..core.types import UUID
@@ -18,6 +18,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
+    is_admin = Column(Boolean, default=False, nullable=False)
 
     # Relationships
     payment_methods = relationship("PaymentMethod", back_populates="user", cascade="all, delete-orphan")
