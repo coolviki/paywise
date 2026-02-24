@@ -183,5 +183,19 @@ export interface ScraperStatus {
   last_result?: 'success' | 'partial' | 'failed';
   benefits_found: number;
   pending_created: number;
+  brands_created: number;
   errors: string[];
+}
+
+export interface PendingBrand {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  keywords: string[];
+  source_url?: string;
+  source_bank?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  scraped_at: string;
+  reviewed_at?: string;
 }

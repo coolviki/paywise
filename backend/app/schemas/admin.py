@@ -144,3 +144,30 @@ class ScraperStatusResponse(BaseModel):
     last_bank: Optional[str] = None
     pending_count: int = 0
     error: Optional[str] = None
+
+
+# ============================================
+# Pending Brand Schemas
+# ============================================
+
+class PendingBrandResponse(BaseModel):
+    id: UUID
+    name: str
+    code: str
+    description: Optional[str] = None
+    keywords: Optional[List[str]] = []
+    source_url: Optional[str] = None
+    source_bank: Optional[str] = None
+    status: str  # 'pending', 'approved', 'rejected'
+    scraped_at: datetime
+    reviewed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PendingBrandUpdate(BaseModel):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    description: Optional[str] = None
+    keywords: Optional[List[str]] = None

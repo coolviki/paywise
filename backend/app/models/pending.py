@@ -32,3 +32,26 @@ class PendingEcosystemChange(Base):
 
     def __repr__(self):
         return f"<PendingEcosystemChange {self.id} ({self.change_type})>"
+
+
+class PendingBrandChange(Base):
+    __tablename__ = "pending_brand_changes"
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False)
+    code = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    keywords = Column(JSONB, nullable=True)  # Array of keywords
+    source_url = Column(String(500), nullable=True)
+    source_bank = Column(String(50), nullable=True)  # hdfc, icici, sbi
+    status = Column(String(20), nullable=False, default="pending")  # 'pending', 'approved', 'rejected'
+    scraped_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by = Column(UUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+    def __repr__(self):
+        return f"<PendingBrandChange {self.name} ({self.status})>"

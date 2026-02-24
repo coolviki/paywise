@@ -1,5 +1,5 @@
 import api from './api';
-import { Brand, BrandListItem, EcosystemBenefit, CardSimple, PendingChange, ScraperStatus } from '../types';
+import { Brand, BrandListItem, EcosystemBenefit, CardSimple, PendingChange, ScraperStatus, PendingBrand } from '../types';
 
 // Brands
 export const getBrands = async (): Promise<BrandListItem[]> => {
@@ -142,4 +142,38 @@ export const approveAllPending = async (): Promise<{
 }> => {
   const response = await api.post('/admin/pending/approve-all');
   return response.data;
+};
+
+// Pending Brands
+export const getPendingBrands = async (status?: string): Promise<PendingBrand[]> => {
+  const response = await api.get('/admin/pending-brands', {
+    params: status ? { status } : undefined,
+  });
+  return response.data;
+};
+
+export const updatePendingBrand = async (
+  brandId: string,
+  data: { name?: string; code?: string; description?: string; keywords?: string[] }
+): Promise<PendingBrand> => {
+  const response = await api.put(`/admin/pending-brands/${brandId}`, data);
+  return response.data;
+};
+
+export const approvePendingBrand = async (
+  brandId: string
+): Promise<{ message: string }> => {
+  const response = await api.post(`/admin/pending-brands/${brandId}/approve`);
+  return response.data;
+};
+
+export const rejectPendingBrand = async (
+  brandId: string
+): Promise<{ message: string }> => {
+  const response = await api.post(`/admin/pending-brands/${brandId}/reject`);
+  return response.data;
+};
+
+export const deletePendingBrand = async (brandId: string): Promise<void> => {
+  await api.delete(`/admin/pending-brands/${brandId}`);
 };

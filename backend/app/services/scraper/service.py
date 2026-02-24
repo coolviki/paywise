@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from ...models import Card, Brand, BrandKeyword, CardEcosystemBenefit, PendingEcosystemChange
+from ...models import Card, Brand, BrandKeyword, CardEcosystemBenefit, PendingEcosystemChange, PendingBrandChange
 from .base import ScrapedBenefit
 from .hdfc import HDFCScraper
 from .icici import ICICIScraper
@@ -28,6 +28,7 @@ class ScraperStatus:
         self.last_result: Optional[str] = None
         self.benefits_found: int = 0
         self.pending_created: int = 0
+        self.brands_created: int = 0
         self.errors: List[str] = []
 
 
@@ -68,6 +69,7 @@ class ScraperService:
             scraper_status.errors = []
             scraper_status.benefits_found = 0
             scraper_status.pending_created = 0
+            scraper_status.brands_created = 0
 
             scrapers_to_run = []
             if bank:
@@ -106,6 +108,7 @@ class ScraperService:
                 "status": "completed",
                 "benefits_found": scraper_status.benefits_found,
                 "pending_created": scraper_status.pending_created,
+                "brands_created": scraper_status.brands_created,
                 "errors": scraper_status.errors
             }
 
@@ -121,7 +124,9 @@ class ScraperService:
 
     def _create_pending_changes(self, benefits: List[ScrapedBenefit]) -> int:
         """Create pending ecosystem changes from scraped benefits."""
+        global scraper_status
         pending_count = 0
+        pending_brands_created = set()  # Track brands we've already created pending entries for
 
         for benefit in benefits:
             try:
@@ -131,10 +136,31 @@ class ScraperService:
                     self.logger.debug(f"Card not found: {benefit.card_name}")
                     continue
 
-                # Find or create brand
+                # Find brand
                 brand = self._find_brand(benefit.brand_name)
                 if not brand:
-                    self.logger.debug(f"Brand not found: {benefit.brand_name}")
+                    # Create pending brand if not already pending
+                    brand_code = benefit.brand_name.lower().replace(" ", "_").replace("-", "_")
+
+                    if brand_code not in pending_brands_created:
+                        # Check if there's already a pending brand with this code
+                        existing_pending_brand = self._find_existing_pending_brand(brand_code)
+                        if not existing_pending_brand:
+                            pending_brand = PendingBrandChange(
+                                name=benefit.brand_name,
+                                code=brand_code,
+                                description=f"Auto-discovered from {benefit.card_name} scraping",
+                                keywords=[benefit.brand_name.lower()],
+                                source_url=benefit.source_url,
+                                source_bank=scraper_status.current_bank,
+                                status="pending"
+                            )
+                            self.db.add(pending_brand)
+                            pending_brands_created.add(brand_code)
+                            scraper_status.brands_created += 1
+                            self.logger.info(f"Created pending brand: {benefit.brand_name}")
+
+                    # Skip benefit creation since brand doesn't exist yet
                     continue
 
                 # Check if benefit already exists
@@ -187,6 +213,15 @@ class ScraperService:
 
         self.db.commit()
         return pending_count
+
+    def _find_existing_pending_brand(self, code: str) -> Optional[PendingBrandChange]:
+        """Find existing pending brand by code."""
+        return self.db.query(PendingBrandChange).filter(
+            and_(
+                PendingBrandChange.code == code,
+                PendingBrandChange.status == "pending"
+            )
+        ).first()
 
     def _find_card(self, card_name: str) -> Optional[Card]:
         """Find a card by name (fuzzy matching)."""
@@ -386,5 +421,119 @@ class ScraperService:
             "last_result": scraper_status.last_result,
             "benefits_found": scraper_status.benefits_found,
             "pending_created": scraper_status.pending_created,
+            "brands_created": scraper_status.brands_created,
             "errors": scraper_status.errors
         }
+
+    # ============================================
+    # PENDING BRAND OPERATIONS
+    # ============================================
+
+    def get_pending_brands(self, status: Optional[str] = None) -> List[PendingBrandChange]:
+        """Get all pending brand changes, optionally filtered by status."""
+        query = self.db.query(PendingBrandChange)
+
+        if status:
+            query = query.filter(PendingBrandChange.status == status)
+
+        query = query.order_by(PendingBrandChange.created_at.desc())
+
+        return query.all()
+
+    def approve_brand(self, brand_id: UUID, reviewer_id: UUID) -> Optional[Brand]:
+        """Approve a pending brand and create it in the database."""
+        pending = self.db.query(PendingBrandChange).filter(
+            PendingBrandChange.id == brand_id
+        ).first()
+
+        if not pending or pending.status != "pending":
+            return None
+
+        try:
+            # Create the brand
+            brand = Brand(
+                name=pending.name,
+                code=pending.code,
+                description=pending.description,
+                is_active=True
+            )
+            self.db.add(brand)
+            self.db.flush()  # Get the brand ID
+
+            # Create keywords
+            if pending.keywords:
+                for kw in pending.keywords:
+                    keyword = BrandKeyword(brand_id=brand.id, keyword=kw.lower())
+                    self.db.add(keyword)
+
+            # Update pending status
+            pending.status = "approved"
+            pending.reviewed_at = datetime.utcnow()
+            pending.reviewed_by = reviewer_id
+
+            self.db.commit()
+            return brand
+
+        except Exception as e:
+            self.logger.error(f"Error approving brand: {e}")
+            self.db.rollback()
+            return None
+
+    def reject_brand(self, brand_id: UUID, reviewer_id: UUID) -> bool:
+        """Reject a pending brand."""
+        pending = self.db.query(PendingBrandChange).filter(
+            PendingBrandChange.id == brand_id
+        ).first()
+
+        if not pending or pending.status != "pending":
+            return False
+
+        pending.status = "rejected"
+        pending.reviewed_at = datetime.utcnow()
+        pending.reviewed_by = reviewer_id
+
+        self.db.commit()
+        return True
+
+    def update_pending_brand(
+        self,
+        brand_id: UUID,
+        name: Optional[str] = None,
+        code: Optional[str] = None,
+        description: Optional[str] = None,
+        keywords: Optional[List[str]] = None
+    ) -> Optional[PendingBrandChange]:
+        """Update a pending brand before approval."""
+        pending = self.db.query(PendingBrandChange).filter(
+            PendingBrandChange.id == brand_id
+        ).first()
+
+        if not pending or pending.status != "pending":
+            return None
+
+        if name is not None:
+            pending.name = name
+        if code is not None:
+            pending.code = code
+        if description is not None:
+            pending.description = description
+        if keywords is not None:
+            pending.keywords = keywords
+
+        self.db.commit()
+        self.db.refresh(pending)
+
+        return pending
+
+    def delete_pending_brand(self, brand_id: UUID) -> bool:
+        """Delete a pending brand."""
+        pending = self.db.query(PendingBrandChange).filter(
+            PendingBrandChange.id == brand_id
+        ).first()
+
+        if not pending:
+            return False
+
+        self.db.delete(pending)
+        self.db.commit()
+        return True

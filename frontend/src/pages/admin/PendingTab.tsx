@@ -1,34 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Pencil, Trash2, CheckCircle, XCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { Check, X, Pencil, Trash2, CheckCircle, XCircle, AlertCircle, ExternalLink, Tag, CreditCard } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
-import { PendingChange } from '../../types';
+import { PendingChange, PendingBrand } from '../../types';
 import * as adminService from '../../services/adminService';
 
+type TabType = 'benefits' | 'brands';
+
 export function PendingTab() {
+  const [activeTab, setActiveTab] = useState<TabType>('benefits');
   const [changes, setChanges] = useState<PendingChange[]>([]);
+  const [brands, setBrands] = useState<PendingBrand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [editingChange, setEditingChange] = useState<PendingChange | null>(null);
+  const [editingBrand, setEditingBrand] = useState<PendingBrand | null>(null);
 
   useEffect(() => {
-    loadChanges();
-  }, [statusFilter]);
+    loadData();
+  }, [statusFilter, activeTab]);
 
-  const loadChanges = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await adminService.getPendingChanges(statusFilter || undefined);
-      setChanges(data);
+      if (activeTab === 'benefits') {
+        const data = await adminService.getPendingChanges(statusFilter || undefined);
+        setChanges(data);
+      } else {
+        const data = await adminService.getPendingBrands(statusFilter || undefined);
+        setBrands(data);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load pending changes');
+      setError(err.response?.data?.detail || 'Failed to load pending items');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleApprove = async (changeId: string) => {
+  // Benefits handlers
+  const handleApproveBenefit = async (changeId: string) => {
     try {
       await adminService.approvePendingChange(changeId);
       setChanges(changes.filter((c) => c.id !== changeId));
@@ -37,7 +48,7 @@ export function PendingTab() {
     }
   };
 
-  const handleReject = async (changeId: string) => {
+  const handleRejectBenefit = async (changeId: string) => {
     try {
       await adminService.rejectPendingChange(changeId);
       setChanges(changes.filter((c) => c.id !== changeId));
@@ -46,7 +57,7 @@ export function PendingTab() {
     }
   };
 
-  const handleDelete = async (changeId: string) => {
+  const handleDeleteBenefit = async (changeId: string) => {
     if (!confirm('Are you sure you want to delete this pending change?')) return;
     try {
       await adminService.deletePendingChange(changeId);
@@ -56,14 +67,43 @@ export function PendingTab() {
     }
   };
 
-  const handleApproveAll = async () => {
+  const handleApproveAllBenefits = async () => {
     if (!confirm(`Are you sure you want to approve all ${changes.length} pending changes?`)) return;
     try {
       const result = await adminService.approveAllPending();
       alert(`Approved: ${result.approved}, Failed: ${result.failed}`);
-      loadChanges();
+      loadData();
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Failed to approve all changes');
+    }
+  };
+
+  // Brands handlers
+  const handleApproveBrand = async (brandId: string) => {
+    try {
+      await adminService.approvePendingBrand(brandId);
+      setBrands(brands.filter((b) => b.id !== brandId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to approve brand');
+    }
+  };
+
+  const handleRejectBrand = async (brandId: string) => {
+    try {
+      await adminService.rejectPendingBrand(brandId);
+      setBrands(brands.filter((b) => b.id !== brandId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to reject brand');
+    }
+  };
+
+  const handleDeleteBrand = async (brandId: string) => {
+    if (!confirm('Are you sure you want to delete this pending brand?')) return;
+    try {
+      await adminService.deletePendingBrand(brandId);
+      setBrands(brands.filter((b) => b.id !== brandId));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to delete brand');
     }
   };
 
@@ -117,11 +157,8 @@ export function PendingTab() {
     }
   };
 
-  const pendingCount = changes.filter((c) => c.status === 'pending').length;
-
-  if (isLoading) {
-    return <div className="text-center py-8 text-gray-500">Loading pending changes...</div>;
-  }
+  const pendingBenefitsCount = changes.filter((c) => c.status === 'pending').length;
+  const pendingBrandsCount = brands.filter((b) => b.status === 'pending').length;
 
   if (error) {
     return <div className="text-center py-8 text-red-500">{error}</div>;
@@ -129,14 +166,52 @@ export function PendingTab() {
 
   return (
     <div>
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => setActiveTab('benefits')}
+          className={`flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
+            activeTab === 'benefits'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          Benefits
+          {pendingBenefitsCount > 0 && (
+            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400 rounded-full text-xs">
+              {pendingBenefitsCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('brands')}
+          className={`flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
+            activeTab === 'brands'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+          }`}
+        >
+          <Tag className="w-4 h-4" />
+          Brands
+          {pendingBrandsCount > 0 && (
+            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-400 rounded-full text-xs">
+              {pendingBrandsCount}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Pending Changes ({changes.length})
+            Pending {activeTab === 'benefits' ? 'Benefits' : 'Brands'} ({activeTab === 'benefits' ? changes.length : brands.length})
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Review and approve scraped ecosystem benefit changes
+            {activeTab === 'benefits'
+              ? 'Review and approve scraped ecosystem benefit changes'
+              : 'Review and approve new brands discovered by the scraper'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -150,136 +225,226 @@ export function PendingTab() {
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-          {pendingCount > 0 && (
-            <Button onClick={handleApproveAll} leftIcon={<Check className="w-4 h-4" />}>
-              Approve All ({pendingCount})
+          {activeTab === 'benefits' && pendingBenefitsCount > 0 && (
+            <Button onClick={handleApproveAllBenefits} leftIcon={<Check className="w-4 h-4" />}>
+              Approve All ({pendingBenefitsCount})
             </Button>
           )}
         </div>
       </div>
 
-      {/* Changes List */}
-      {changes.length === 0 ? (
-        <Card className="p-12 text-center">
-          <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No Pending Changes
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            {statusFilter === 'pending'
-              ? 'All changes have been reviewed. Run the scraper to find new updates.'
-              : `No ${statusFilter} changes found.`}
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {changes.map((change) => (
-            <Card key={change.id} className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    {getChangeTypeBadge(change.change_type)}
-                    {getStatusBadge(change.status)}
-                  </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    {change.card_name || 'Unknown Card'}
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Brand: {change.brand_name || 'Unknown'}
-                  </p>
-
-                  {/* Benefit Details */}
-                  <div className="mt-3 grid grid-cols-2 gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">New Value</p>
-                      <p className="font-semibold text-green-600 dark:text-green-400">
-                        {change.benefit_rate}% {change.benefit_type}
-                      </p>
+      {isLoading ? (
+        <div className="text-center py-8 text-gray-500">Loading...</div>
+      ) : activeTab === 'benefits' ? (
+        // Benefits List
+        changes.length === 0 ? (
+          <Card className="p-12 text-center">
+            <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No Pending Benefits
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              {statusFilter === 'pending'
+                ? 'All benefit changes have been reviewed. Run the scraper to find new updates.'
+                : `No ${statusFilter} changes found.`}
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {changes.map((change) => (
+              <Card key={change.id} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      {getChangeTypeBadge(change.change_type)}
+                      {getStatusBadge(change.status)}
                     </div>
-                    {change.old_values && (
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      {change.card_name || 'Unknown Card'}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Brand: {change.brand_name || 'Unknown'}
+                    </p>
+
+                    <div className="mt-3 grid grid-cols-2 gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Old Value</p>
-                        <p className="font-semibold text-gray-500 dark:text-gray-400 line-through">
-                          {change.old_values.benefit_rate}% {change.old_values.benefit_type}
+                        <p className="text-xs text-gray-500 dark:text-gray-400">New Value</p>
+                        <p className="font-semibold text-green-600 dark:text-green-400">
+                          {change.benefit_rate}% {change.benefit_type}
                         </p>
                       </div>
+                      {change.old_values && (
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Old Value</p>
+                          <p className="font-semibold text-gray-500 dark:text-gray-400 line-through">
+                            {change.old_values.benefit_rate}% {change.old_values.benefit_type}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {change.description && (
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        {change.description}
+                      </p>
                     )}
-                  </div>
 
-                  {change.description && (
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                      {change.description}
+                    {change.source_url && (
+                      <a
+                        href={change.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-sm text-primary-600 hover:text-primary-700"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        View Source
+                      </a>
+                    )}
+
+                    <p className="mt-2 text-xs text-gray-400">
+                      Scraped: {new Date(change.scraped_at).toLocaleString()}
                     </p>
-                  )}
-
-                  {change.source_url && (
-                    <a
-                      href={change.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 mt-2 text-sm text-primary-600 hover:text-primary-700"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      View Source
-                    </a>
-                  )}
-
-                  <p className="mt-2 text-xs text-gray-400">
-                    Scraped: {new Date(change.scraped_at).toLocaleString()}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                {change.status === 'pending' && (
-                  <div className="flex flex-col gap-2 ml-4">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprove(change.id)}
-                      leftIcon={<Check className="w-4 h-4" />}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleReject(change.id)}
-                      leftIcon={<X className="w-4 h-4" />}
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingChange(change)}
-                      leftIcon={<Pencil className="w-4 h-4" />}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-500 hover:text-red-600"
-                      onClick={() => handleDelete(change.id)}
-                      leftIcon={<Trash2 className="w-4 h-4" />}
-                    >
-                      Delete
-                    </Button>
                   </div>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
+
+                  {change.status === 'pending' && (
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button size="sm" onClick={() => handleApproveBenefit(change.id)} leftIcon={<Check className="w-4 h-4" />}>
+                        Approve
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleRejectBenefit(change.id)} leftIcon={<X className="w-4 h-4" />}>
+                        Reject
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingChange(change)} leftIcon={<Pencil className="w-4 h-4" />}>
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteBenefit(change.id)} leftIcon={<Trash2 className="w-4 h-4" />}>
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : (
+        // Brands List
+        brands.length === 0 ? (
+          <Card className="p-12 text-center">
+            <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No Pending Brands
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              {statusFilter === 'pending'
+                ? 'All brand changes have been reviewed. Run the scraper to discover new brands.'
+                : `No ${statusFilter} brands found.`}
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {brands.map((brand) => (
+              <Card key={brand.id} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">
+                        New Brand
+                      </span>
+                      {getStatusBadge(brand.status)}
+                      {brand.source_bank && (
+                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs">
+                          from {brand.source_bank.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      {brand.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                      Code: {brand.code}
+                    </p>
+
+                    {brand.description && (
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        {brand.description}
+                      </p>
+                    )}
+
+                    {brand.keywords && brand.keywords.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="text-xs text-gray-500">Keywords:</span>
+                        {brand.keywords.map((kw, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs"
+                          >
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {brand.source_url && (
+                      <a
+                        href={brand.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-2 text-sm text-primary-600 hover:text-primary-700"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        View Source
+                      </a>
+                    )}
+
+                    <p className="mt-2 text-xs text-gray-400">
+                      Discovered: {new Date(brand.scraped_at).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {brand.status === 'pending' && (
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button size="sm" onClick={() => handleApproveBrand(brand.id)} leftIcon={<Check className="w-4 h-4" />}>
+                        Approve
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleRejectBrand(brand.id)} leftIcon={<X className="w-4 h-4" />}>
+                        Reject
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingBrand(brand)} leftIcon={<Pencil className="w-4 h-4" />}>
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteBrand(brand.id)} leftIcon={<Trash2 className="w-4 h-4" />}>
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Benefit Modal */}
       {editingChange && (
         <EditChangeModal
           change={editingChange}
           onClose={() => setEditingChange(null)}
           onSuccess={() => {
             setEditingChange(null);
-            loadChanges();
+            loadData();
+          }}
+        />
+      )}
+
+      {/* Edit Brand Modal */}
+      {editingBrand && (
+        <EditBrandModal
+          brand={editingBrand}
+          onClose={() => setEditingBrand(null)}
+          onSuccess={() => {
+            setEditingBrand(null);
+            loadData();
           }}
         />
       )}
@@ -385,6 +550,122 @@ function EditChangeModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-500">{error}</p>}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={isLoading} className="flex-1">
+              Update
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditBrandModal({
+  brand,
+  onClose,
+  onSuccess,
+}: {
+  brand: PendingBrand;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState(brand.name);
+  const [code, setCode] = useState(brand.code);
+  const [description, setDescription] = useState(brand.description || '');
+  const [keywords, setKeywords] = useState(brand.keywords?.join(', ') || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await adminService.updatePendingBrand(brand.id, {
+        name,
+        code,
+        description: description || undefined,
+        keywords: keywords.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean),
+      });
+      onSuccess();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update brand');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Edit Pending Brand
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Code
+            </label>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Keywords (comma-separated)
+            </label>
+            <input
+              type="text"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="e.g., swiggy, swiggy app"
             />
           </div>
 

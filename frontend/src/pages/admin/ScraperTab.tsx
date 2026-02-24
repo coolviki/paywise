@@ -99,7 +99,7 @@ export function ScraperTab() {
         </div>
 
         {/* Last Run Info */}
-        <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">Last Run</p>
             <p className="font-medium text-gray-900 dark:text-white">
@@ -113,9 +113,15 @@ export function ScraperTab() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Pending Created</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Pending Benefits</p>
             <p className="font-medium text-green-600 dark:text-green-400">
               {status?.pending_created || 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">New Brands</p>
+            <p className="font-medium text-purple-600 dark:text-purple-400">
+              {status?.brands_created || 0}
             </p>
           </div>
         </div>

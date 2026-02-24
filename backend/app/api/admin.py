@@ -8,13 +8,14 @@ from ..core.security import get_current_admin
 from ..models.user import User
 from ..models.merchant import Brand, BrandKeyword
 from ..models.card import Card, Bank, CardEcosystemBenefit
-from ..models.pending import PendingEcosystemChange
+from ..models.pending import PendingEcosystemChange, PendingBrandChange
 from ..schemas.admin import (
     BrandCreate, BrandUpdate, BrandResponse, BrandListResponse,
     KeywordCreate, KeywordResponse,
     EcosystemBenefitCreate, EcosystemBenefitUpdate, EcosystemBenefitResponse,
     CardSimple,
     PendingChangeResponse, PendingChangeUpdate, ScraperStatusResponse,
+    PendingBrandResponse, PendingBrandUpdate,
 )
 from ..services.scraper import ScraperService
 
@@ -559,3 +560,119 @@ async def approve_all_pending(
         "message": f"Processed {len(change_ids)} changes",
         **result
     }
+
+
+# ============================================
+# PENDING BRANDS ENDPOINTS
+# ============================================
+
+@router.get("/pending-brands", response_model=List[PendingBrandResponse])
+async def list_pending_brands(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """
+    List pending brand changes.
+
+    Args:
+        status: Optional status filter (pending, approved, rejected)
+    """
+    service = ScraperService(db)
+    brands = service.get_pending_brands(status)
+
+    return [
+        PendingBrandResponse(
+            id=b.id,
+            name=b.name,
+            code=b.code,
+            description=b.description,
+            keywords=b.keywords or [],
+            source_url=b.source_url,
+            source_bank=b.source_bank,
+            status=b.status,
+            scraped_at=b.scraped_at,
+            reviewed_at=b.reviewed_at,
+        )
+        for b in brands
+    ]
+
+
+@router.put("/pending-brands/{brand_id}", response_model=PendingBrandResponse)
+async def update_pending_brand(
+    brand_id: UUID,
+    data: PendingBrandUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Update a pending brand before approval."""
+    service = ScraperService(db)
+    brand = service.update_pending_brand(
+        brand_id,
+        name=data.name,
+        code=data.code,
+        description=data.description,
+        keywords=data.keywords,
+    )
+
+    if not brand:
+        raise HTTPException(status_code=404, detail="Pending brand not found or already processed")
+
+    return PendingBrandResponse(
+        id=brand.id,
+        name=brand.name,
+        code=brand.code,
+        description=brand.description,
+        keywords=brand.keywords or [],
+        source_url=brand.source_url,
+        source_bank=brand.source_bank,
+        status=brand.status,
+        scraped_at=brand.scraped_at,
+        reviewed_at=brand.reviewed_at,
+    )
+
+
+@router.post("/pending-brands/{brand_id}/approve")
+async def approve_pending_brand(
+    brand_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Approve a pending brand and create it in the database."""
+    service = ScraperService(db)
+    brand = service.approve_brand(brand_id, admin.id)
+
+    if not brand:
+        raise HTTPException(status_code=404, detail="Pending brand not found or already processed")
+
+    return {"message": f"Brand '{brand.name}' approved and created"}
+
+
+@router.post("/pending-brands/{brand_id}/reject")
+async def reject_pending_brand(
+    brand_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Reject a pending brand."""
+    service = ScraperService(db)
+    success = service.reject_brand(brand_id, admin.id)
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Pending brand not found or already processed")
+
+    return {"message": "Brand rejected"}
+
+
+@router.delete("/pending-brands/{brand_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_pending_brand(
+    brand_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Delete a pending brand."""
+    service = ScraperService(db)
+    success = service.delete_pending_brand(brand_id)
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Pending brand not found")
