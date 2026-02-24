@@ -1,14 +1,16 @@
 import React from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Shield, Tags, CreditCard, Bot, Clock } from 'lucide-react';
+import { Shield, Tags, CreditCard, Bot, Clock, Wallet } from 'lucide-react';
 import { BrandsTab } from './BrandsTab';
 import { BenefitsTab } from './BenefitsTab';
+import { CardsTab } from './CardsTab';
 import { ScraperTab } from './ScraperTab';
 import { PendingTab } from './PendingTab';
 
 const tabs = [
+  { id: 'cards', label: 'Cards', icon: CreditCard, path: '/admin/cards' },
   { id: 'brands', label: 'Brands', icon: Tags, path: '/admin/brands' },
-  { id: 'benefits', label: 'Benefits', icon: CreditCard, path: '/admin/benefits' },
+  { id: 'benefits', label: 'Benefits', icon: Wallet, path: '/admin/benefits' },
   { id: 'scraper', label: 'Scraper', icon: Bot, path: '/admin/scraper' },
   { id: 'pending', label: 'Pending', icon: Clock, path: '/admin/pending' },
 ];
@@ -63,7 +65,8 @@ export function AdminDashboard() {
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
-          <Route path="/" element={<Navigate to="/admin/brands" replace />} />
+          <Route path="/" element={<Navigate to="/admin/cards" replace />} />
+          <Route path="/cards" element={<CardsTab />} />
           <Route path="/brands" element={<BrandsTab />} />
           <Route path="/benefits" element={<BenefitsTab />} />
           <Route path="/scraper" element={<ScraperTab />} />

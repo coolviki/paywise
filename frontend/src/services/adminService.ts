@@ -1,5 +1,5 @@
 import api from './api';
-import { Brand, BrandListItem, EcosystemBenefit, CardSimple, PendingChange, ScraperStatus, PendingBrand } from '../types';
+import { Brand, BrandListItem, EcosystemBenefit, CardSimple, CardFull, BankSimple, PendingChange, ScraperStatus, PendingBrand } from '../types';
 
 // Brands
 export const getBrands = async (): Promise<BrandListItem[]> => {
@@ -86,6 +86,60 @@ export const getCards = async (params?: {
 }): Promise<CardSimple[]> => {
   const response = await api.get('/admin/cards', { params });
   return response.data;
+};
+
+// Banks
+export const getBanks = async (): Promise<BankSimple[]> => {
+  const response = await api.get('/admin/banks');
+  return response.data;
+};
+
+// Cards CRUD
+export const getAllCards = async (params?: {
+  search?: string;
+  bank_id?: string;
+  include_inactive?: boolean;
+}): Promise<CardFull[]> => {
+  const response = await api.get('/admin/cards/all', { params });
+  return response.data;
+};
+
+export const getCard = async (cardId: string): Promise<CardFull> => {
+  const response = await api.get(`/admin/cards/${cardId}`);
+  return response.data;
+};
+
+export const createCard = async (data: {
+  bank_id: string;
+  name: string;
+  card_type?: string;
+  card_network?: string;
+  annual_fee?: number;
+  reward_type?: string;
+  base_reward_rate?: number;
+}): Promise<CardFull> => {
+  const response = await api.post('/admin/cards/new', data);
+  return response.data;
+};
+
+export const updateCard = async (
+  cardId: string,
+  data: {
+    name?: string;
+    card_type?: string;
+    card_network?: string;
+    annual_fee?: number;
+    reward_type?: string;
+    base_reward_rate?: number;
+    is_active?: boolean;
+  }
+): Promise<CardFull> => {
+  const response = await api.put(`/admin/cards/${cardId}`, data);
+  return response.data;
+};
+
+export const deleteCard = async (cardId: string): Promise<void> => {
+  await api.delete(`/admin/cards/${cardId}`);
 };
 
 // Scraper

@@ -13,7 +13,7 @@ from ..schemas.admin import (
     BrandCreate, BrandUpdate, BrandResponse, BrandListResponse,
     KeywordCreate, KeywordResponse,
     EcosystemBenefitCreate, EcosystemBenefitUpdate, EcosystemBenefitResponse,
-    CardSimple,
+    CardSimple, CardCreate, CardUpdate, CardResponse, BankSimple,
     PendingChangeResponse, PendingChangeUpdate, ScraperStatusResponse,
     PendingBrandResponse, PendingBrandUpdate,
 )
@@ -360,6 +360,199 @@ async def list_cards(
         )
         for card in cards
     ]
+
+
+# ============================================
+# CARDS CRUD
+# ============================================
+
+@router.get("/banks", response_model=List[BankSimple])
+async def list_banks(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """List all banks for dropdown selection."""
+    banks = db.query(Bank).filter(Bank.is_active == True).order_by(Bank.name).all()
+    return [
+        BankSimple(id=b.id, name=b.name, code=b.code)
+        for b in banks
+    ]
+
+
+@router.get("/cards/all", response_model=List[CardResponse])
+async def list_all_cards(
+    search: Optional[str] = None,
+    bank_id: Optional[UUID] = None,
+    include_inactive: bool = False,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """List all cards with full details for admin management."""
+    query = db.query(Card).options(joinedload(Card.bank))
+
+    if not include_inactive:
+        query = query.filter(Card.is_active == True)
+
+    if bank_id:
+        query = query.filter(Card.bank_id == bank_id)
+
+    if search:
+        query = query.filter(Card.name.ilike(f"%{search}%"))
+
+    cards = query.order_by(Card.name).all()
+
+    return [
+        CardResponse(
+            id=card.id,
+            bank_id=card.bank_id,
+            bank_name=card.bank.name if card.bank else "Unknown",
+            name=card.name,
+            card_type=card.card_type,
+            card_network=card.card_network,
+            annual_fee=card.annual_fee,
+            reward_type=card.reward_type,
+            base_reward_rate=card.base_reward_rate,
+            is_active=card.is_active if card.is_active is not None else True,
+            created_at=card.created_at,
+        )
+        for card in cards
+    ]
+
+
+@router.get("/cards/{card_id}", response_model=CardResponse)
+async def get_card(
+    card_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Get a single card by ID."""
+    card = db.query(Card).options(joinedload(Card.bank)).filter(Card.id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    return CardResponse(
+        id=card.id,
+        bank_id=card.bank_id,
+        bank_name=card.bank.name if card.bank else "Unknown",
+        name=card.name,
+        card_type=card.card_type,
+        card_network=card.card_network,
+        annual_fee=card.annual_fee,
+        reward_type=card.reward_type,
+        base_reward_rate=card.base_reward_rate,
+        is_active=card.is_active if card.is_active is not None else True,
+        created_at=card.created_at,
+    )
+
+
+@router.post("/cards/new", response_model=CardResponse, status_code=status.HTTP_201_CREATED)
+async def create_card(
+    data: CardCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Create a new card."""
+    # Validate bank exists
+    bank = db.query(Bank).filter(Bank.id == data.bank_id).first()
+    if not bank:
+        raise HTTPException(status_code=404, detail="Bank not found")
+
+    # Check for duplicate card name within same bank
+    existing = db.query(Card).filter(
+        Card.bank_id == data.bank_id,
+        Card.name.ilike(data.name)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Card '{data.name}' already exists for this bank")
+
+    card = Card(
+        bank_id=data.bank_id,
+        name=data.name,
+        card_type=data.card_type,
+        card_network=data.card_network,
+        annual_fee=data.annual_fee,
+        reward_type=data.reward_type,
+        base_reward_rate=data.base_reward_rate,
+        is_active=True,
+    )
+    db.add(card)
+    db.commit()
+    db.refresh(card)
+
+    return CardResponse(
+        id=card.id,
+        bank_id=card.bank_id,
+        bank_name=bank.name,
+        name=card.name,
+        card_type=card.card_type,
+        card_network=card.card_network,
+        annual_fee=card.annual_fee,
+        reward_type=card.reward_type,
+        base_reward_rate=card.base_reward_rate,
+        is_active=card.is_active,
+        created_at=card.created_at,
+    )
+
+
+@router.put("/cards/{card_id}", response_model=CardResponse)
+async def update_card(
+    card_id: UUID,
+    data: CardUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Update a card."""
+    card = db.query(Card).options(joinedload(Card.bank)).filter(Card.id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    if data.name is not None:
+        card.name = data.name
+    if data.card_type is not None:
+        card.card_type = data.card_type
+    if data.card_network is not None:
+        card.card_network = data.card_network
+    if data.annual_fee is not None:
+        card.annual_fee = data.annual_fee
+    if data.reward_type is not None:
+        card.reward_type = data.reward_type
+    if data.base_reward_rate is not None:
+        card.base_reward_rate = data.base_reward_rate
+    if data.is_active is not None:
+        card.is_active = data.is_active
+
+    db.commit()
+    db.refresh(card)
+
+    return CardResponse(
+        id=card.id,
+        bank_id=card.bank_id,
+        bank_name=card.bank.name if card.bank else "Unknown",
+        name=card.name,
+        card_type=card.card_type,
+        card_network=card.card_network,
+        annual_fee=card.annual_fee,
+        reward_type=card.reward_type,
+        base_reward_rate=card.base_reward_rate,
+        is_active=card.is_active if card.is_active is not None else True,
+        created_at=card.created_at,
+    )
+
+
+@router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_card(
+    card_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Delete a card (soft delete by setting is_active=False)."""
+    card = db.query(Card).filter(Card.id == card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    # Soft delete
+    card.is_active = False
+    db.commit()
 
 
 # ============================================

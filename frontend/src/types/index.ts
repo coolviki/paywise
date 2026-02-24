@@ -155,6 +155,26 @@ export interface CardSimple {
   bank_name: string;
 }
 
+export interface BankSimple {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface CardFull {
+  id: string;
+  bank_id: string;
+  bank_name: string;
+  name: string;
+  card_type: string;
+  card_network?: string;
+  annual_fee?: number;
+  reward_type?: string;
+  base_reward_rate?: number;
+  is_active: boolean;
+  created_at?: string;
+}
+
 // Scraper Types
 export interface PendingChange {
   id: string;

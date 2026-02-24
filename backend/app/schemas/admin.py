@@ -109,6 +109,56 @@ class CardSimple(BaseModel):
 
 
 # ============================================
+# Card CRUD Schemas
+# ============================================
+
+class BankSimple(BaseModel):
+    id: UUID
+    name: str
+    code: str
+
+    class Config:
+        from_attributes = True
+
+
+class CardCreate(BaseModel):
+    bank_id: UUID
+    name: str
+    card_type: str = "credit"  # credit, debit
+    card_network: Optional[str] = None  # visa, mastercard, rupay, amex
+    annual_fee: Optional[Decimal] = None
+    reward_type: Optional[str] = None  # cashback, points, miles
+    base_reward_rate: Optional[Decimal] = None
+
+
+class CardUpdate(BaseModel):
+    name: Optional[str] = None
+    card_type: Optional[str] = None
+    card_network: Optional[str] = None
+    annual_fee: Optional[Decimal] = None
+    reward_type: Optional[str] = None
+    base_reward_rate: Optional[Decimal] = None
+    is_active: Optional[bool] = None
+
+
+class CardResponse(BaseModel):
+    id: UUID
+    bank_id: UUID
+    bank_name: str
+    name: str
+    card_type: str
+    card_network: Optional[str] = None
+    annual_fee: Optional[Decimal] = None
+    reward_type: Optional[str] = None
+    base_reward_rate: Optional[Decimal] = None
+    is_active: bool = True
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================
 # Pending Changes Schemas (for scraper)
 # ============================================
 
