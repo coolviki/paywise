@@ -20,6 +20,7 @@ class Brand(Base):
     # Relationships
     keywords = relationship("BrandKeyword", back_populates="brand", cascade="all, delete-orphan")
     ecosystem_benefits = relationship("CardEcosystemBenefit", back_populates="brand")
+    campaigns = relationship("Campaign", back_populates="brand")
 
     def __repr__(self):
         return f"<Brand {self.name}>"

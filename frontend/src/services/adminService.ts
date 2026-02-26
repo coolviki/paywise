@@ -1,5 +1,5 @@
 import api from './api';
-import { Brand, BrandListItem, EcosystemBenefit, CardSimple, CardFull, BankSimple, PendingChange, ScraperStatus, PendingBrand, PendingCard } from '../types';
+import { Brand, BrandListItem, EcosystemBenefit, CardSimple, CardFull, BankSimple, PendingChange, ScraperStatus, PendingBrand, PendingCard, Campaign, PendingCampaign } from '../types';
 
 // Brands
 export const getBrands = async (): Promise<BrandListItem[]> => {
@@ -274,4 +274,104 @@ export const rejectPendingCard = async (
 
 export const deletePendingCard = async (cardId: string): Promise<void> => {
   await api.delete(`/admin/pending-cards/${cardId}`);
+};
+
+// Campaigns
+export const getCampaigns = async (params?: {
+  brand_id?: string;
+  card_id?: string;
+  active_only?: boolean;
+}): Promise<Campaign[]> => {
+  const response = await api.get('/admin/campaigns', { params });
+  return response.data;
+};
+
+export const createCampaign = async (data: {
+  card_id: string;
+  brand_id: string;
+  benefit_rate: number;
+  benefit_type: string;
+  description?: string;
+  terms_url?: string;
+  start_date: string;
+  end_date: string;
+}): Promise<Campaign> => {
+  const response = await api.post('/admin/campaigns', data);
+  return response.data;
+};
+
+export const updateCampaign = async (
+  campaignId: string,
+  data: {
+    benefit_rate?: number;
+    benefit_type?: string;
+    description?: string;
+    terms_url?: string;
+    start_date?: string;
+    end_date?: string;
+    is_active?: boolean;
+  }
+): Promise<Campaign> => {
+  const response = await api.put(`/admin/campaigns/${campaignId}`, data);
+  return response.data;
+};
+
+export const deleteCampaign = async (campaignId: string): Promise<void> => {
+  await api.delete(`/admin/campaigns/${campaignId}`);
+};
+
+// Pending Campaigns
+export const getPendingCampaigns = async (status?: string): Promise<PendingCampaign[]> => {
+  const response = await api.get('/admin/pending-campaigns', {
+    params: status ? { status_filter: status } : undefined,
+  });
+  return response.data;
+};
+
+export const createPendingCampaign = async (data: {
+  card_id: string;
+  brand_id: string;
+  benefit_rate: number;
+  benefit_type: string;
+  description?: string;
+  terms_url?: string;
+  start_date: string;
+  end_date: string;
+  source_url?: string;
+}): Promise<PendingCampaign> => {
+  const response = await api.post('/admin/pending-campaigns', data);
+  return response.data;
+};
+
+export const updatePendingCampaign = async (
+  campaignId: string,
+  data: {
+    benefit_rate?: number;
+    benefit_type?: string;
+    description?: string;
+    terms_url?: string;
+    start_date?: string;
+    end_date?: string;
+  }
+): Promise<PendingCampaign> => {
+  const response = await api.put(`/admin/pending-campaigns/${campaignId}`, data);
+  return response.data;
+};
+
+export const approvePendingCampaign = async (
+  campaignId: string
+): Promise<{ message: string }> => {
+  const response = await api.post(`/admin/pending-campaigns/${campaignId}/approve`);
+  return response.data;
+};
+
+export const rejectPendingCampaign = async (
+  campaignId: string
+): Promise<{ message: string }> => {
+  const response = await api.post(`/admin/pending-campaigns/${campaignId}/reject`);
+  return response.data;
+};
+
+export const deletePendingCampaign = async (campaignId: string): Promise<void> => {
+  await api.delete(`/admin/pending-campaigns/${campaignId}`);
 };

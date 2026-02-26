@@ -3,6 +3,7 @@ from .card import Bank, Card, PaymentMethod, CardEcosystemBenefit
 from .merchant import Category, Merchant, MerchantLocation, Brand, BrandKeyword
 from .offer import Offer, OfferFetchLog, RecommendationLog, LLMPrompt, Configuration
 from .pending import PendingEcosystemChange, PendingBrandChange, PendingCardChange
+from .campaign import Campaign, PendingCampaign
 
 __all__ = [
     "User",
@@ -23,4 +24,6 @@ __all__ = [
     "PendingEcosystemChange",
     "PendingBrandChange",
     "PendingCardChange",
+    "Campaign",
+    "PendingCampaign",
 ]

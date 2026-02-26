@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 
@@ -275,3 +275,97 @@ class PendingCardCreate(BaseModel):
     base_reward_rate: Optional[Decimal] = None
     terms_url: Optional[str] = None
     source_url: Optional[str] = None
+
+
+# ============================================
+# Campaign Schemas
+# ============================================
+
+class CampaignCreate(BaseModel):
+    card_id: UUID
+    brand_id: UUID
+    benefit_rate: Decimal
+    benefit_type: str
+    description: Optional[str] = None
+    terms_url: Optional[str] = None
+    start_date: date
+    end_date: date
+
+
+class CampaignUpdate(BaseModel):
+    benefit_rate: Optional[Decimal] = None
+    benefit_type: Optional[str] = None
+    description: Optional[str] = None
+    terms_url: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    is_active: Optional[bool] = None
+
+
+class CampaignResponse(BaseModel):
+    id: UUID
+    card_id: UUID
+    card_name: str
+    bank_name: str
+    brand_id: UUID
+    brand_name: str
+    benefit_rate: Decimal
+    benefit_type: str
+    description: Optional[str] = None
+    terms_url: Optional[str] = None
+    start_date: date
+    end_date: date
+    is_active: bool = True
+    is_currently_active: bool = False
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================
+# Pending Campaign Schemas
+# ============================================
+
+class PendingCampaignCreate(BaseModel):
+    card_id: UUID
+    brand_id: UUID
+    benefit_rate: Decimal
+    benefit_type: str
+    description: Optional[str] = None
+    terms_url: Optional[str] = None
+    start_date: date
+    end_date: date
+    source_url: Optional[str] = None
+
+
+class PendingCampaignUpdate(BaseModel):
+    benefit_rate: Optional[Decimal] = None
+    benefit_type: Optional[str] = None
+    description: Optional[str] = None
+    terms_url: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+
+class PendingCampaignResponse(BaseModel):
+    id: UUID
+    card_id: UUID
+    card_name: str
+    brand_id: UUID
+    brand_name: str
+    benefit_rate: Decimal
+    benefit_type: str
+    description: Optional[str] = None
+    terms_url: Optional[str] = None
+    start_date: date
+    end_date: date
+    source_url: Optional[str] = None
+    change_type: str  # 'new', 'update', 'delete'
+    existing_campaign_id: Optional[UUID] = None
+    status: str  # 'pending', 'approved', 'rejected'
+    scraped_at: datetime
+    reviewed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

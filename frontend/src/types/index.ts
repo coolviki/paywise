@@ -243,3 +243,42 @@ export interface PendingCard {
   scraped_at: string;
   reviewed_at?: string;
 }
+
+// Campaign Types
+export interface Campaign {
+  id: string;
+  card_id: string;
+  card_name: string;
+  bank_name: string;
+  brand_id: string;
+  brand_name: string;
+  benefit_rate: number;
+  benefit_type: string;
+  description?: string;
+  terms_url?: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  is_currently_active: boolean;
+  created_at?: string;
+}
+
+export interface PendingCampaign {
+  id: string;
+  card_id: string;
+  card_name: string;
+  brand_id: string;
+  brand_name: string;
+  benefit_rate: number;
+  benefit_type: string;
+  description?: string;
+  terms_url?: string;
+  start_date: string;
+  end_date: string;
+  source_url?: string;
+  change_type: 'new' | 'update' | 'delete';
+  existing_campaign_id?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  scraped_at: string;
+  reviewed_at?: string;
+}

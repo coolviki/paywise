@@ -47,6 +47,7 @@ class Card(Base):
     payment_methods = relationship("PaymentMethod", back_populates="card")
     offers = relationship("Offer", back_populates="card")
     ecosystem_benefits = relationship("CardEcosystemBenefit", back_populates="card")
+    campaigns = relationship("Campaign", back_populates="card")
 
     def __repr__(self):
         return f"<Card {self.name}>"

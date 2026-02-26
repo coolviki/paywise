@@ -9,6 +9,7 @@ from ..models.user import User
 from ..models.merchant import Brand, BrandKeyword
 from ..models.card import Card, Bank, CardEcosystemBenefit
 from ..models.pending import PendingEcosystemChange, PendingBrandChange, PendingCardChange
+from ..models.campaign import Campaign, PendingCampaign
 from ..schemas.admin import (
     BrandCreate, BrandUpdate, BrandResponse, BrandListResponse,
     KeywordCreate, KeywordResponse,
@@ -17,6 +18,8 @@ from ..schemas.admin import (
     PendingChangeResponse, PendingChangeUpdate, ScraperStatusResponse,
     PendingBrandResponse, PendingBrandUpdate,
     PendingCardResponse, PendingCardUpdate, PendingCardCreate,
+    CampaignCreate, CampaignUpdate, CampaignResponse,
+    PendingCampaignCreate, PendingCampaignUpdate, PendingCampaignResponse,
 )
 from ..services.scraper import ScraperService
 
@@ -1135,6 +1138,464 @@ async def delete_pending_card(
 
     if not pending:
         raise HTTPException(status_code=404, detail="Pending card not found")
+
+    db.delete(pending)
+    db.commit()
+
+
+# ============================================
+# CAMPAIGNS CRUD
+# ============================================
+
+@router.get("/campaigns", response_model=List[CampaignResponse])
+async def list_campaigns(
+    brand_id: Optional[UUID] = None,
+    card_id: Optional[UUID] = None,
+    active_only: bool = False,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """List all campaigns with optional filters."""
+    from datetime import date
+
+    query = db.query(Campaign).options(
+        joinedload(Campaign.card).joinedload(Card.bank),
+        joinedload(Campaign.brand),
+    )
+
+    if brand_id:
+        query = query.filter(Campaign.brand_id == brand_id)
+
+    if card_id:
+        query = query.filter(Campaign.card_id == card_id)
+
+    if active_only:
+        today = date.today()
+        query = query.filter(
+            Campaign.is_active == True,
+            Campaign.start_date <= today,
+            Campaign.end_date >= today,
+        )
+
+    campaigns = query.order_by(Campaign.end_date.desc()).all()
+
+    result = []
+    today = date.today()
+    for c in campaigns:
+        is_currently_active = c.is_active and c.start_date <= today <= c.end_date
+        result.append(CampaignResponse(
+            id=c.id,
+            card_id=c.card_id,
+            card_name=c.card.name if c.card else "Unknown",
+            bank_name=c.card.bank.name if c.card and c.card.bank else "Unknown",
+            brand_id=c.brand_id,
+            brand_name=c.brand.name if c.brand else "Unknown",
+            benefit_rate=c.benefit_rate,
+            benefit_type=c.benefit_type,
+            description=c.description,
+            terms_url=c.terms_url,
+            start_date=c.start_date,
+            end_date=c.end_date,
+            is_active=c.is_active if c.is_active is not None else True,
+            is_currently_active=is_currently_active,
+            created_at=c.created_at,
+        ))
+    return result
+
+
+@router.post("/campaigns", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
+async def create_campaign(
+    data: CampaignCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Create a new campaign."""
+    from datetime import date
+
+    # Validate card exists
+    card = db.query(Card).options(joinedload(Card.bank)).filter(Card.id == data.card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    # Validate brand exists
+    brand = db.query(Brand).filter(Brand.id == data.brand_id).first()
+    if not brand:
+        raise HTTPException(status_code=404, detail="Brand not found")
+
+    # Validate dates
+    if data.start_date > data.end_date:
+        raise HTTPException(status_code=400, detail="Start date must be before end date")
+
+    campaign = Campaign(
+        card_id=data.card_id,
+        brand_id=data.brand_id,
+        benefit_rate=data.benefit_rate,
+        benefit_type=data.benefit_type,
+        description=data.description,
+        terms_url=data.terms_url,
+        start_date=data.start_date,
+        end_date=data.end_date,
+    )
+    db.add(campaign)
+    db.commit()
+    db.refresh(campaign)
+
+    today = date.today()
+    is_currently_active = campaign.is_active and campaign.start_date <= today <= campaign.end_date
+
+    return CampaignResponse(
+        id=campaign.id,
+        card_id=campaign.card_id,
+        card_name=card.name,
+        bank_name=card.bank.name if card.bank else "Unknown",
+        brand_id=campaign.brand_id,
+        brand_name=brand.name,
+        benefit_rate=campaign.benefit_rate,
+        benefit_type=campaign.benefit_type,
+        description=campaign.description,
+        terms_url=campaign.terms_url,
+        start_date=campaign.start_date,
+        end_date=campaign.end_date,
+        is_active=campaign.is_active if campaign.is_active is not None else True,
+        is_currently_active=is_currently_active,
+        created_at=campaign.created_at,
+    )
+
+
+@router.put("/campaigns/{campaign_id}", response_model=CampaignResponse)
+async def update_campaign(
+    campaign_id: UUID,
+    data: CampaignUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Update a campaign."""
+    from datetime import date
+
+    campaign = db.query(Campaign).options(
+        joinedload(Campaign.card).joinedload(Card.bank),
+        joinedload(Campaign.brand),
+    ).filter(Campaign.id == campaign_id).first()
+
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if data.benefit_rate is not None:
+        campaign.benefit_rate = data.benefit_rate
+    if data.benefit_type is not None:
+        campaign.benefit_type = data.benefit_type
+    if data.description is not None:
+        campaign.description = data.description
+    if data.terms_url is not None:
+        campaign.terms_url = data.terms_url
+    if data.start_date is not None:
+        campaign.start_date = data.start_date
+    if data.end_date is not None:
+        campaign.end_date = data.end_date
+    if data.is_active is not None:
+        campaign.is_active = data.is_active
+
+    # Validate dates after updates
+    if campaign.start_date > campaign.end_date:
+        raise HTTPException(status_code=400, detail="Start date must be before end date")
+
+    db.commit()
+    db.refresh(campaign)
+
+    today = date.today()
+    is_currently_active = campaign.is_active and campaign.start_date <= today <= campaign.end_date
+
+    return CampaignResponse(
+        id=campaign.id,
+        card_id=campaign.card_id,
+        card_name=campaign.card.name if campaign.card else "Unknown",
+        bank_name=campaign.card.bank.name if campaign.card and campaign.card.bank else "Unknown",
+        brand_id=campaign.brand_id,
+        brand_name=campaign.brand.name if campaign.brand else "Unknown",
+        benefit_rate=campaign.benefit_rate,
+        benefit_type=campaign.benefit_type,
+        description=campaign.description,
+        terms_url=campaign.terms_url,
+        start_date=campaign.start_date,
+        end_date=campaign.end_date,
+        is_active=campaign.is_active if campaign.is_active is not None else True,
+        is_currently_active=is_currently_active,
+        created_at=campaign.created_at,
+    )
+
+
+@router.delete("/campaigns/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_campaign(
+    campaign_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Delete a campaign."""
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    db.delete(campaign)
+    db.commit()
+
+
+# ============================================
+# PENDING CAMPAIGNS ENDPOINTS
+# ============================================
+
+@router.get("/pending-campaigns", response_model=List[PendingCampaignResponse])
+async def list_pending_campaigns(
+    status_filter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """List pending campaign changes."""
+    query = db.query(PendingCampaign).options(
+        joinedload(PendingCampaign.card).joinedload(Card.bank),
+        joinedload(PendingCampaign.brand),
+    )
+
+    if status_filter:
+        query = query.filter(PendingCampaign.status == status_filter)
+
+    campaigns = query.order_by(PendingCampaign.created_at.desc()).all()
+
+    return [
+        PendingCampaignResponse(
+            id=c.id,
+            card_id=c.card_id,
+            card_name=c.card.name if c.card else "Unknown",
+            brand_id=c.brand_id,
+            brand_name=c.brand.name if c.brand else "Unknown",
+            benefit_rate=c.benefit_rate,
+            benefit_type=c.benefit_type,
+            description=c.description,
+            terms_url=c.terms_url,
+            start_date=c.start_date,
+            end_date=c.end_date,
+            source_url=c.source_url,
+            change_type=c.change_type,
+            existing_campaign_id=c.existing_campaign_id,
+            status=c.status,
+            scraped_at=c.scraped_at,
+            reviewed_at=c.reviewed_at,
+        )
+        for c in campaigns
+    ]
+
+
+@router.post("/pending-campaigns", response_model=PendingCampaignResponse)
+async def create_pending_campaign(
+    data: PendingCampaignCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Manually create a pending campaign for approval."""
+    # Verify card exists
+    card = db.query(Card).options(joinedload(Card.bank)).filter(Card.id == data.card_id).first()
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    # Verify brand exists
+    brand = db.query(Brand).filter(Brand.id == data.brand_id).first()
+    if not brand:
+        raise HTTPException(status_code=404, detail="Brand not found")
+
+    # Validate dates
+    if data.start_date > data.end_date:
+        raise HTTPException(status_code=400, detail="Start date must be before end date")
+
+    pending = PendingCampaign(
+        card_id=data.card_id,
+        brand_id=data.brand_id,
+        benefit_rate=data.benefit_rate,
+        benefit_type=data.benefit_type,
+        description=data.description,
+        terms_url=data.terms_url,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        source_url=data.source_url,
+        change_type="new",
+        status="pending",
+    )
+    db.add(pending)
+    db.commit()
+    db.refresh(pending)
+
+    return PendingCampaignResponse(
+        id=pending.id,
+        card_id=pending.card_id,
+        card_name=card.name,
+        brand_id=pending.brand_id,
+        brand_name=brand.name,
+        benefit_rate=pending.benefit_rate,
+        benefit_type=pending.benefit_type,
+        description=pending.description,
+        terms_url=pending.terms_url,
+        start_date=pending.start_date,
+        end_date=pending.end_date,
+        source_url=pending.source_url,
+        change_type=pending.change_type,
+        existing_campaign_id=pending.existing_campaign_id,
+        status=pending.status,
+        scraped_at=pending.scraped_at,
+        reviewed_at=pending.reviewed_at,
+    )
+
+
+@router.put("/pending-campaigns/{campaign_id}", response_model=PendingCampaignResponse)
+async def update_pending_campaign(
+    campaign_id: UUID,
+    data: PendingCampaignUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Update a pending campaign before approval."""
+    pending = db.query(PendingCampaign).options(
+        joinedload(PendingCampaign.card),
+        joinedload(PendingCampaign.brand),
+    ).filter(
+        PendingCampaign.id == campaign_id,
+        PendingCampaign.status == "pending",
+    ).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending campaign not found or already processed")
+
+    if data.benefit_rate is not None:
+        pending.benefit_rate = data.benefit_rate
+    if data.benefit_type is not None:
+        pending.benefit_type = data.benefit_type
+    if data.description is not None:
+        pending.description = data.description
+    if data.terms_url is not None:
+        pending.terms_url = data.terms_url
+    if data.start_date is not None:
+        pending.start_date = data.start_date
+    if data.end_date is not None:
+        pending.end_date = data.end_date
+
+    # Validate dates after updates
+    if pending.start_date > pending.end_date:
+        raise HTTPException(status_code=400, detail="Start date must be before end date")
+
+    db.commit()
+    db.refresh(pending)
+
+    return PendingCampaignResponse(
+        id=pending.id,
+        card_id=pending.card_id,
+        card_name=pending.card.name if pending.card else "Unknown",
+        brand_id=pending.brand_id,
+        brand_name=pending.brand.name if pending.brand else "Unknown",
+        benefit_rate=pending.benefit_rate,
+        benefit_type=pending.benefit_type,
+        description=pending.description,
+        terms_url=pending.terms_url,
+        start_date=pending.start_date,
+        end_date=pending.end_date,
+        source_url=pending.source_url,
+        change_type=pending.change_type,
+        existing_campaign_id=pending.existing_campaign_id,
+        status=pending.status,
+        scraped_at=pending.scraped_at,
+        reviewed_at=pending.reviewed_at,
+    )
+
+
+@router.post("/pending-campaigns/{campaign_id}/approve")
+async def approve_pending_campaign(
+    campaign_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Approve a pending campaign and create/update it in the database."""
+    from datetime import datetime
+
+    pending = db.query(PendingCampaign).filter(
+        PendingCampaign.id == campaign_id,
+        PendingCampaign.status == "pending",
+    ).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending campaign not found or already processed")
+
+    if pending.change_type == "new":
+        # Create new campaign
+        campaign = Campaign(
+            card_id=pending.card_id,
+            brand_id=pending.brand_id,
+            benefit_rate=pending.benefit_rate,
+            benefit_type=pending.benefit_type,
+            description=pending.description,
+            terms_url=pending.terms_url,
+            start_date=pending.start_date,
+            end_date=pending.end_date,
+            is_active=True,
+        )
+        db.add(campaign)
+    elif pending.change_type == "update" and pending.existing_campaign_id:
+        # Update existing campaign
+        campaign = db.query(Campaign).filter(Campaign.id == pending.existing_campaign_id).first()
+        if campaign:
+            campaign.benefit_rate = pending.benefit_rate
+            campaign.benefit_type = pending.benefit_type
+            campaign.description = pending.description
+            campaign.terms_url = pending.terms_url
+            campaign.start_date = pending.start_date
+            campaign.end_date = pending.end_date
+    elif pending.change_type == "delete" and pending.existing_campaign_id:
+        # Delete existing campaign
+        campaign = db.query(Campaign).filter(Campaign.id == pending.existing_campaign_id).first()
+        if campaign:
+            db.delete(campaign)
+
+    # Update pending status
+    pending.status = "approved"
+    pending.reviewed_at = datetime.utcnow()
+    pending.reviewed_by = admin.id
+
+    db.commit()
+
+    return {"message": f"Campaign {pending.change_type}d successfully"}
+
+
+@router.post("/pending-campaigns/{campaign_id}/reject")
+async def reject_pending_campaign(
+    campaign_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Reject a pending campaign."""
+    from datetime import datetime
+
+    pending = db.query(PendingCampaign).filter(
+        PendingCampaign.id == campaign_id,
+        PendingCampaign.status == "pending",
+    ).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending campaign not found or already processed")
+
+    pending.status = "rejected"
+    pending.reviewed_at = datetime.utcnow()
+    pending.reviewed_by = admin.id
+    db.commit()
+
+    return {"message": "Campaign rejected"}
+
+
+@router.delete("/pending-campaigns/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_pending_campaign(
+    campaign_id: UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Delete a pending campaign."""
+    pending = db.query(PendingCampaign).filter(PendingCampaign.id == campaign_id).first()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending campaign not found")
 
     db.delete(pending)
     db.commit()

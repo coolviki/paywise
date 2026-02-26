@@ -1,16 +1,18 @@
 import React from 'react';
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { Shield, Tags, CreditCard, Bot, Clock, Wallet } from 'lucide-react';
+import { Shield, Tags, CreditCard, Bot, Clock, Wallet, Calendar } from 'lucide-react';
 import { BrandsTab } from './BrandsTab';
 import { BenefitsTab } from './BenefitsTab';
 import { CardsTab } from './CardsTab';
 import { ScraperTab } from './ScraperTab';
 import { PendingTab } from './PendingTab';
+import { CampaignsTab } from './CampaignsTab';
 
 const tabs = [
   { id: 'cards', label: 'Cards', icon: CreditCard, path: '/admin/cards' },
   { id: 'brands', label: 'Brands', icon: Tags, path: '/admin/brands' },
   { id: 'benefits', label: 'Benefits', icon: Wallet, path: '/admin/benefits' },
+  { id: 'campaigns', label: 'Campaigns', icon: Calendar, path: '/admin/campaigns' },
   { id: 'scraper', label: 'Scraper', icon: Bot, path: '/admin/scraper' },
   { id: 'pending', label: 'Pending', icon: Clock, path: '/admin/pending' },
 ];
@@ -69,6 +71,7 @@ export function AdminDashboard() {
           <Route path="/cards" element={<CardsTab />} />
           <Route path="/brands" element={<BrandsTab />} />
           <Route path="/benefits" element={<BenefitsTab />} />
+          <Route path="/campaigns" element={<CampaignsTab />} />
           <Route path="/scraper" element={<ScraperTab />} />
           <Route path="/pending" element={<PendingTab />} />
         </Routes>
