@@ -3,8 +3,13 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
 import { useAuth } from './hooks/useAuth';
+import { usePageTracking } from './hooks/useAnalytics';
+import { initGA } from './utils/analytics';
 import { Loading } from './components/common/Loading';
 import { AdminRoute } from './components/common/AdminRoute';
+
+// Initialize Google Analytics
+initGA();
 
 // Pages
 import { Login } from './pages/Login';
@@ -31,6 +36,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  // Track page views on route changes
+  usePageTracking();
+
   // Initialize dark mode from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
