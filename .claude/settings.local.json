@@ -13,7 +13,11 @@
       "Bash(git push:*)",
       "Bash(DATABASE_URL='postgresql://postgres:QgwZjRoihepcIJVgoOIRHWvkeelqXcWv@yamanote.proxy.rlwy.net:26258/railway' python -m app.seed_data:*)",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(brew list:*)",
+      "Bash(npx @railway/cli:*)",
+      "Bash(ls:*)"
     ]
   }
 }

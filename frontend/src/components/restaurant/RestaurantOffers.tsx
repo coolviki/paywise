@@ -107,11 +107,18 @@ interface OfferCardProps {
 function OfferCard({ offer, isNew }: OfferCardProps) {
   const platformColors: Record<string, string> = {
     swiggy_dineout: 'bg-orange-100 text-orange-800 border-orange-200',
-    zomato: 'bg-red-100 text-red-800 border-red-200',
+    zomato_pay: 'bg-red-100 text-red-800 border-red-200',
     eazydiner: 'bg-purple-100 text-purple-800 border-purple-200',
-    dineout: 'bg-pink-100 text-pink-800 border-pink-200',
-    magicpin: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    district: 'bg-blue-100 text-blue-800 border-blue-200',
     unknown: 'bg-gray-100 text-gray-800 border-gray-200',
+  };
+
+  const platformLogos: Record<string, string> = {
+    swiggy_dineout: '🍽️',
+    zomato_pay: '🔴',
+    eazydiner: '🍴',
+    district: '📍',
+    unknown: '🏪',
   };
 
   const offerTypeLabels: Record<string, string> = {
@@ -164,6 +171,18 @@ function OfferCard({ offer, isNew }: OfferCardProps) {
                 Code: {offer.coupon_code}
               </span>
             </div>
+          )}
+
+          {/* Platform link */}
+          {offer.platform_url && (
+            <a
+              href={offer.platform_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-xs font-medium underline opacity-75 hover:opacity-100"
+            >
+              Open in {offer.platform_display_name} →
+            </a>
           )}
         </div>
 

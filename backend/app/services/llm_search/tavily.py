@@ -200,25 +200,19 @@ Only include currently valid offers. Return empty offers array if no valid offer
             "swiggy_dineout": Platform.SWIGGY_DINEOUT,
             "swiggy dineout": Platform.SWIGGY_DINEOUT,
             "swiggy": Platform.SWIGGY_DINEOUT,
-            "zomato": Platform.ZOMATO,
+            "zomato_pay": Platform.ZOMATO_PAY,
+            "zomato pay": Platform.ZOMATO_PAY,
+            "zomato": Platform.ZOMATO_PAY,
             "eazydiner": Platform.EAZYDINER,
             "eazy diner": Platform.EAZYDINER,
-            "dineout": Platform.DINEOUT,
-            "magicpin": Platform.MAGICPIN,
+            "district": Platform.DISTRICT,
         }
         return mapping.get(platform_str.lower(), Platform.UNKNOWN)
 
     def _get_platform_display_name(self, platform: Platform) -> str:
         """Get display name for platform."""
-        names = {
-            Platform.SWIGGY_DINEOUT: "Swiggy Dineout",
-            Platform.ZOMATO: "Zomato",
-            Platform.EAZYDINER: "EazyDiner",
-            Platform.DINEOUT: "Dineout",
-            Platform.MAGICPIN: "Magicpin",
-            Platform.UNKNOWN: "Unknown",
-        }
-        return names.get(platform, "Unknown")
+        from .base import PLATFORM_INFO
+        return PLATFORM_INFO.get(platform, {}).get("display_name", "Unknown")
 
     async def close(self):
         """Close the HTTP client."""

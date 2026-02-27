@@ -283,13 +283,12 @@ export interface PendingCampaign {
   reviewed_at?: string;
 }
 
-// Restaurant Offers Types (from Swiggy Dineout, Zomato, EazyDiner, etc.)
+// Restaurant Offers Types (from Swiggy Dineout, Zomato Pay, EazyDiner, etc.)
 export type RestaurantOfferPlatform =
   | 'swiggy_dineout'
-  | 'zomato'
+  | 'zomato_pay'
   | 'eazydiner'
-  | 'dineout'
-  | 'magicpin'
+  | 'district'
   | 'unknown';
 
 export interface RestaurantOffer {
@@ -306,6 +305,8 @@ export interface RestaurantOffer {
   coupon_code?: string;
   valid_days?: string;
   source_url?: string;
+  platform_url?: string;  // Link to restaurant on platform
+  app_link?: string;      // Deep link to app
 }
 
 export interface RestaurantOffersState {

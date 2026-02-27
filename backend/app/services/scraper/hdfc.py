@@ -29,6 +29,7 @@ class HDFCScraper(BaseScraper):
         "Marriott Bonvoy": "/personal/pay/cards/credit-cards/marriott-bonvoy-hdfc-bank-credit-card",
         "Swiggy": "/personal/pay/cards/credit-cards/swiggy-hdfc-bank-credit-card",
         "IndianOil": "/personal/pay/cards/credit-cards/indianoil-hdfc-bank-credit-card",
+        "Pixel": "/personal/pay/cards/credit-cards/pixel-hdfc-bank-credit-card",
     }
 
     # Known ecosystem benefits for HDFC cards (fallback data)
@@ -76,6 +77,15 @@ class HDFCScraper(BaseScraper):
             benefit_type="points",
             description="5% value back on fuel purchases at IndianOil outlets",
             source_url="https://www.hdfcbank.com/personal/pay/cards/credit-cards/indianoil-hdfc-bank-credit-card"
+        ),
+        # Pixel Card - Online Shopping
+        ScrapedBenefit(
+            card_name="Pixel",
+            brand_name="Online Shopping",
+            benefit_rate=5.0,
+            benefit_type="cashback",
+            description="5% CashBack on all online spends",
+            source_url="https://www.hdfcbank.com/personal/pay/cards/credit-cards/pixel-hdfc-bank-credit-card"
         ),
         # Infinia - SmartBuy
         ScrapedBenefit(

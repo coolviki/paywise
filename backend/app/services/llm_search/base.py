@@ -11,17 +11,51 @@ from enum import Enum
 class Platform(str, Enum):
     """Supported restaurant/dineout platforms."""
     SWIGGY_DINEOUT = "swiggy_dineout"
-    ZOMATO = "zomato"
+    ZOMATO_PAY = "zomato_pay"
     EAZYDINER = "eazydiner"
-    DINEOUT = "dineout"
-    MAGICPIN = "magicpin"
+    DISTRICT = "district"  # Future
     UNKNOWN = "unknown"
+
+
+# Platform metadata with URLs and display names
+PLATFORM_INFO = {
+    Platform.SWIGGY_DINEOUT: {
+        "display_name": "Swiggy Dineout",
+        "website": "https://www.swiggy.com/dineout",
+        "app_link": "swiggy://dineout",
+        "search_url": "https://www.swiggy.com/dineout/search?query={restaurant}",
+    },
+    Platform.ZOMATO_PAY: {
+        "display_name": "Zomato Pay",
+        "website": "https://www.zomato.com",
+        "app_link": "zomato://",
+        "search_url": "https://www.zomato.com/{city}/restaurants?q={restaurant}",
+    },
+    Platform.EAZYDINER: {
+        "display_name": "EazyDiner",
+        "website": "https://www.eazydiner.com",
+        "app_link": "eazydiner://",
+        "search_url": "https://www.eazydiner.com/search?q={restaurant}&city={city}",
+    },
+    Platform.DISTRICT: {
+        "display_name": "District",
+        "website": "https://www.district.in",
+        "app_link": "district://",
+        "search_url": "https://www.district.in/search?q={restaurant}",
+    },
+    Platform.UNKNOWN: {
+        "display_name": "Unknown",
+        "website": None,
+        "app_link": None,
+        "search_url": None,
+    },
+}
 
 
 class RestaurantOffer(BaseModel):
     """Structured restaurant offer from a platform."""
     platform: Platform
-    platform_display_name: str  # "Swiggy Dineout", "Zomato", etc.
+    platform_display_name: str  # "Swiggy Dineout", "Zomato Pay", etc.
     offer_type: str  # "pre-booked", "walk-in", "bank_offer", "coupon"
     discount_text: str  # "40% off on pre-booked meals"
     discount_percentage: Optional[float] = None
@@ -32,10 +66,39 @@ class RestaurantOffer(BaseModel):
     conditions: Optional[str] = None  # "Valid on weekdays only"
     coupon_code: Optional[str] = None
     valid_days: Optional[str] = None  # "Mon-Thu", "All days"
-    source_url: Optional[str] = None
+    source_url: Optional[str] = None  # Link to the offer/restaurant on platform
+    platform_url: Optional[str] = None  # Deep link to app/website
+    app_link: Optional[str] = None  # App deep link
 
     class Config:
         use_enum_values = True
+
+    @classmethod
+    def with_platform_links(
+        cls,
+        platform: Platform,
+        restaurant_name: str,
+        city: str,
+        **kwargs
+    ) -> "RestaurantOffer":
+        """Create offer with platform links auto-populated."""
+        info = PLATFORM_INFO.get(platform, PLATFORM_INFO[Platform.UNKNOWN])
+
+        # Build search URL
+        platform_url = None
+        if info.get("search_url"):
+            platform_url = info["search_url"].format(
+                restaurant=restaurant_name.replace(" ", "+"),
+                city=city.lower().replace(" ", "-"),
+            )
+
+        return cls(
+            platform=platform,
+            platform_display_name=info["display_name"],
+            platform_url=platform_url,
+            app_link=info.get("app_link"),
+            **kwargs
+        )
 
 
 class SearchResult(BaseModel):
@@ -104,38 +167,31 @@ class LLMSearchProvider(ABC):
         platforms: Optional[List[Platform]] = None,
     ) -> str:
         """Build the search prompt for the LLM."""
-        platform_names = []
+        # Default to the main 3 platforms
         if platforms:
-            platform_map = {
-                Platform.SWIGGY_DINEOUT: "Swiggy Dineout",
-                Platform.ZOMATO: "Zomato",
-                Platform.EAZYDINER: "EazyDiner",
-                Platform.DINEOUT: "Dineout",
-                Platform.MAGICPIN: "Magicpin",
-            }
-            platform_names = [platform_map.get(p, p.value) for p in platforms]
+            platform_names = [PLATFORM_INFO.get(p, {}).get("display_name", p.value) for p in platforms]
         else:
-            platform_names = ["Swiggy Dineout", "Zomato", "EazyDiner", "Dineout", "Magicpin"]
+            platform_names = ["Swiggy Dineout", "Zomato Pay", "EazyDiner"]
 
         platforms_str = ", ".join(platform_names)
 
-        return f"""Find current dine-in offers and deals for "{restaurant_name}" in {city} from these platforms: {platforms_str}.
+        return f"""Find current dine-in payment offers for "{restaurant_name}" in {city} from these payment apps: {platforms_str}.
 
-For each platform, extract:
-1. Pre-booking discounts (e.g., "40% off on pre-booked meals")
-2. Walk-in/Pay via app discounts
-3. Bank card offers (HDFC, ICICI, Axis, SBI, etc.)
-4. Coupon codes if any
-5. Day-specific offers (weekday specials, etc.)
+Look for:
+1. **Flat discounts** - e.g., "Flat 20% off up to ₹200"
+2. **Pre-booking offers** - discounts for reserving tables in advance
+3. **Walk-in/Pay via app** - discounts when paying through the app at restaurant
+4. **Bank card offers** - extra discounts with HDFC, ICICI, Axis, SBI, Kotak, Amex cards
+5. **Weekday/Weekend specials** - day-specific offers
+6. **Promo codes** - any active coupon codes
 
-Format each offer clearly with:
-- Platform name
-- Offer type (pre-booked/walk-in/bank offer/coupon)
-- Discount percentage and max cap
-- Conditions and validity
-- Bank name if it's a card-specific offer
+For each offer found, provide:
+- Platform name (Swiggy Dineout / Zomato Pay / EazyDiner)
+- Discount amount (percentage and max cap in ₹)
+- Conditions (minimum order, valid days, card restrictions)
+- Bank name if it's a bank-specific offer
 
-Be specific and factual. Only include currently valid offers."""
+Important: Only include currently active offers. Be specific with numbers (e.g., "30% off up to ₹150" not just "discount available")."""
 
     def _parse_offer_text(self, text: str, platform: Platform) -> Optional[RestaurantOffer]:
         """

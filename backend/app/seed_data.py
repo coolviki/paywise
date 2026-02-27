@@ -51,9 +51,10 @@ def seed_cards(db: Session, banks: dict):
     """Seed cards data - comprehensive list of Indian credit cards."""
     cards_data = [
         # ============================================
-        # HDFC BANK (17 cards)
+        # HDFC BANK (18 cards)
         # ============================================
         {"bank_code": "hdfc", "name": "HDFC Infinia Metal Edition", "card_type": "credit", "card_network": "visa", "annual_fee": 12500, "reward_type": "points", "base_reward_rate": 3.33},
+        {"bank_code": "hdfc", "name": "HDFC Pixel Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 500, "reward_type": "cashback", "base_reward_rate": 5.0},
         {"bank_code": "hdfc", "name": "Paytm HDFC Bank Credit Card", "card_type": "credit", "card_network": "visa", "annual_fee": 499, "reward_type": "cashback", "base_reward_rate": 1.0},
         {"bank_code": "hdfc", "name": "HDFC Diners Club Black Metal Edition", "card_type": "credit", "card_network": "rupay", "annual_fee": 10000, "reward_type": "points", "base_reward_rate": 3.33},
         {"bank_code": "hdfc", "name": "HDFC Diners Club Privilege", "card_type": "credit", "card_network": "rupay", "annual_fee": 2500, "reward_type": "points", "base_reward_rate": 2.67},
