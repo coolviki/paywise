@@ -1,22 +1,26 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, User, Tag, Shield, Globe } from 'lucide-react';
+import { Menu, User, Shield, Globe } from 'lucide-react';
 import { SearchBar } from '../components/search/SearchBar';
 import { PlacesList } from '../components/search/PlacesList';
-import { Card } from '../components/common/Card';
 import { Loading } from '../components/common/Loading';
 import { useAuth } from '../hooks/useAuth';
 import { useLocation } from '../hooks/useLocation';
 import { useSearch } from '../hooks/useRecommendation';
 import { Merchant, User as UserType } from '../types';
 
-// Popular online shopping portals in India
+// Popular online shopping portals in India (primary display)
+const FEATURED_PORTALS: Merchant[] = [
+  { id: 'online-amazon', name: 'Amazon', category: 'Online Shopping', logo_url: 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg', is_chain: true, locations: [], offer_count: 0 },
+  { id: 'online-flipkart', name: 'Flipkart', category: 'Online Shopping', logo_url: 'https://static-assets-web.flixcart.com/batman-returns/batman-returns/p/images/fkheaderlogo_exploreplus-44005d.svg', is_chain: true, locations: [], offer_count: 0 },
+  { id: 'online-zomato', name: 'Zomato', category: 'Food Delivery', logo_url: 'https://b.zmtcdn.com/web_assets/b40b97e677bc7b2ca77c58c61db266fe1603954218.png', is_chain: true, locations: [], offer_count: 0 },
+  { id: 'online-swiggy', name: 'Swiggy', category: 'Food Delivery', logo_url: 'https://upload.wikimedia.org/wikipedia/en/1/12/Swiggy_logo.svg', is_chain: true, locations: [], offer_count: 0 },
+];
+
+// All online portals for search
 const ONLINE_PORTALS: Merchant[] = [
-  { id: 'online-amazon', name: 'Amazon', category: 'Online Shopping', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
-  { id: 'online-flipkart', name: 'Flipkart', category: 'Online Shopping', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
+  ...FEATURED_PORTALS,
   { id: 'online-myntra', name: 'Myntra', category: 'Online Fashion', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
-  { id: 'online-swiggy', name: 'Swiggy', category: 'Food Delivery', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
-  { id: 'online-zomato', name: 'Zomato', category: 'Food Delivery', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
   { id: 'online-bigbasket', name: 'BigBasket', category: 'Grocery', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
   { id: 'online-blinkit', name: 'Blinkit', category: 'Grocery', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
   { id: 'online-zepto', name: 'Zepto', category: 'Grocery', logo_url: undefined, is_chain: true, locations: [], offer_count: 0 },
@@ -183,7 +187,7 @@ export function Home() {
           </>
         ) : (
           <>
-            {/* Popular Online Portals - Grid */}
+            {/* Popular Online Portals - Single Row */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Globe className="w-4 h-4 text-primary-600" />
@@ -192,16 +196,30 @@ export function Home() {
                 </h3>
               </div>
               <div className="grid grid-cols-4 gap-3">
-                {ONLINE_PORTALS.slice(0, 8).map((portal) => (
+                {FEATURED_PORTALS.map((portal) => (
                   <button
                     key={portal.id}
                     onClick={() => handleMerchantSelect(portal)}
                     className="flex flex-col items-center p-3 bg-white dark:bg-gray-800 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors shadow-sm"
                   >
-                    <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mb-2">
-                      <span className="text-lg font-semibold text-primary-600">
-                        {portal.name[0]}
-                      </span>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 overflow-hidden bg-white">
+                      {portal.logo_url ? (
+                        <img
+                          src={portal.logo_url}
+                          alt={portal.name}
+                          className="w-8 h-8 object-contain"
+                          onError={(e) => {
+                            // Fallback to initial letter if logo fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = `<span class="text-lg font-semibold text-primary-600">${portal.name[0]}</span>`;
+                          }}
+                        />
+                      ) : (
+                        <span className="text-lg font-semibold text-primary-600">
+                          {portal.name[0]}
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs text-gray-700 dark:text-gray-300 text-center truncate w-full">
                       {portal.name}
@@ -221,20 +239,6 @@ export function Home() {
                 title="Nearby Places"
               />
             )}
-
-            {/* Hot offers section */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                <Tag className="w-4 h-4" />
-                Hot Offers Today
-              </h3>
-              <Card className="p-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white border-0">
-                <p className="font-medium">20% off at Swiggy with HDFC</p>
-                <p className="text-sm text-primary-100 mt-1">
-                  Max discount Rs. 100
-                </p>
-              </Card>
-            </div>
           </>
         )}
       </div>
