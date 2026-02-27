@@ -132,14 +132,13 @@ Only include currently valid offers. Return empty offers array if no valid offer
         """Search for restaurant offers using Tavily + Gemini."""
 
         # Build search query
-        platform_names = ["Swiggy Dineout", "Zomato", "EazyDiner"]
+        platform_names = ["Swiggy Dineout", "Zomato Pay", "EazyDiner"]
         if platforms:
             platform_map = {
                 Platform.SWIGGY_DINEOUT: "Swiggy Dineout",
-                Platform.ZOMATO: "Zomato",
+                Platform.ZOMATO_PAY: "Zomato Pay",
                 Platform.EAZYDINER: "EazyDiner",
-                Platform.DINEOUT: "Dineout",
-                Platform.MAGICPIN: "Magicpin",
+                Platform.DISTRICT: "District",
             }
             platform_names = [platform_map.get(p, p.value) for p in platforms]
 
@@ -169,6 +168,10 @@ Only include currently valid offers. Return empty offers array if no valid offer
                 conditions=item.get("conditions"),
                 coupon_code=item.get("coupon_code"),
             ))
+
+        # Filter offers by user's selected platforms
+        if platforms:
+            offers = [o for o in offers if o.platform in platforms]
 
         return SearchResult(
             restaurant_name=restaurant_name,

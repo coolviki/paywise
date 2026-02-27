@@ -249,10 +249,9 @@ Important: Only include currently active offers. Be specific with numbers (e.g.,
 
         platform_names = {
             Platform.SWIGGY_DINEOUT: "Swiggy Dineout",
-            Platform.ZOMATO: "Zomato",
+            Platform.ZOMATO_PAY: "Zomato Pay",
             Platform.EAZYDINER: "EazyDiner",
-            Platform.DINEOUT: "Dineout",
-            Platform.MAGICPIN: "Magicpin",
+            Platform.DISTRICT: "District",
             Platform.UNKNOWN: "Unknown",
         }
 

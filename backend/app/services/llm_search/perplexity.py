@@ -92,6 +92,10 @@ Only include currently valid offers. Be specific and factual."""
         # Parse JSON from response
         offers = self._parse_response(content, restaurant_name)
 
+        # Filter offers by user's selected platforms
+        if platforms:
+            offers = [o for o in offers if o.platform in platforms]
+
         return SearchResult(
             restaurant_name=restaurant_name,
             city=city,
@@ -155,7 +159,9 @@ Only include currently valid offers."""
                             line_content, buffer = buffer.split("\n", 1)
                             offer = self._parse_offer_line(line_content)
                             if offer:
-                                yield offer
+                                # Filter by user's selected platforms
+                                if platforms is None or offer.platform in platforms:
+                                    yield offer
                     except json.JSONDecodeError:
                         continue
 
@@ -163,7 +169,9 @@ Only include currently valid offers."""
             if buffer.strip():
                 offer = self._parse_offer_line(buffer)
                 if offer:
-                    yield offer
+                    # Filter by user's selected platforms
+                    if platforms is None or offer.platform in platforms:
+                        yield offer
 
     def _parse_response(self, content: str, restaurant_name: str) -> List[RestaurantOffer]:
         """Parse JSON response into RestaurantOffer objects."""
