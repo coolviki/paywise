@@ -7,17 +7,40 @@ import { Loading } from '../components/common/Loading';
 import { useRecommendation } from '../hooks/useRecommendation';
 import { RestaurantOffers } from '../components/restaurant/RestaurantOffers';
 
-// Categories that should show restaurant offers
+// Categories that should show dine-in offers
+// Includes Google Places types + custom categories
 const DINEOUT_CATEGORIES = [
+  // Google Places types
   'restaurant',
   'cafe',
+  'coffee',
+  'coffee_shop',
   'bar',
   'food',
   'bakery',
   'meal_delivery',
   'meal_takeaway',
   'night_club',
+  'pub',
+  'bistro',
+  'diner',
+  'pizzeria',
+  'ice_cream',
+  'dessert',
+  'fast_food',
+  'food_court',
+  'brewery',
+  'wine_bar',
+  'cocktail',
+  'lounge',
+  // Custom/app categories
   'Food & Dining',
+  'Dining',
+  'Cafe',
+  'Coffee',
+  'Starbucks',
+  'CCD',
+  'Costa',
 ];
 
 export function Recommendation() {
@@ -41,8 +64,24 @@ export function Recommendation() {
   // Determine if this is a restaurant/dining place
   const isDiningPlace = useMemo(() => {
     const category = recommendation?.place_category || placeCategory || '';
-    return DINEOUT_CATEGORIES.some((c) => category.toLowerCase().includes(c.toLowerCase()));
-  }, [recommendation?.place_category, placeCategory]);
+    const name = placeName.toLowerCase();
+
+    // Check category
+    const categoryMatch = DINEOUT_CATEGORIES.some((c) =>
+      category.toLowerCase().includes(c.toLowerCase())
+    );
+    if (categoryMatch) return true;
+
+    // Also check place name for known dining brands
+    const diningBrands = [
+      'starbucks', 'ccd', 'cafe coffee day', 'costa', 'barista',
+      'mcdonald', 'burger king', 'kfc', 'domino', 'pizza hut',
+      'subway', 'dunkin', 'tim hortons', 'chaayos', 'chai point',
+      'haldiram', 'bikanervala', 'saravana bhavan', 'sagar ratna',
+      'social', 'imperfecto', 'cafe delhi heights', 'big chill',
+    ];
+    return diningBrands.some((brand) => name.includes(brand));
+  }, [recommendation?.place_category, placeCategory, placeName]);
 
   // Extract city from address (simple heuristic)
   const city = useMemo(() => {
