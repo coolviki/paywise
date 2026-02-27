@@ -82,7 +82,7 @@ Return JSON in this exact format:
 {{
     "offers": [
         {{
-            "platform": "swiggy_dineout|zomato|eazydiner|dineout|magicpin",
+            "platform": "swiggy_dineout|zomato|eazydiner|district",
             "offer_type": "pre-booked|walk-in|bank_offer|coupon|general",
             "discount_text": "Full description of the offer",
             "discount_percentage": 40.0,
@@ -94,6 +94,12 @@ Return JSON in this exact format:
     ],
     "summary": "Brief summary of best deals available"
 }}
+
+Platform mapping:
+- Swiggy Dineout, Dineout → "swiggy_dineout"
+- Zomato, Zomato Pay, Zomato Dining, Zomato Gold → "zomato"
+- EazyDiner → "eazydiner"
+- District → "district"
 
 Only include currently valid offers. Return empty offers array if no valid offers found."""
 
@@ -203,14 +209,23 @@ Only include currently valid offers. Return empty offers array if no valid offer
     def _map_platform(self, platform_str: str) -> Platform:
         """Map string to Platform enum."""
         mapping = {
+            # Swiggy Dineout variations
             "swiggy_dineout": Platform.SWIGGY_DINEOUT,
             "swiggy dineout": Platform.SWIGGY_DINEOUT,
             "swiggy": Platform.SWIGGY_DINEOUT,
+            "dineout": Platform.SWIGGY_DINEOUT,
+            # Zomato variations
             "zomato_pay": Platform.ZOMATO_PAY,
             "zomato pay": Platform.ZOMATO_PAY,
             "zomato": Platform.ZOMATO_PAY,
+            "zomato_dining": Platform.ZOMATO_PAY,
+            "zomato dining": Platform.ZOMATO_PAY,
+            "zomato gold": Platform.ZOMATO_PAY,
+            # EazyDiner variations
             "eazydiner": Platform.EAZYDINER,
             "eazy diner": Platform.EAZYDINER,
+            "eazy_diner": Platform.EAZYDINER,
+            # District
             "district": Platform.DISTRICT,
         }
         return mapping.get(platform_str.lower(), Platform.UNKNOWN)
