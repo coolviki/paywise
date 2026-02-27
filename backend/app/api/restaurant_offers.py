@@ -71,14 +71,23 @@ class RestaurantOffersResponse(BaseModel):
 
 def _get_provider() -> Optional[LLMSearchProvider]:
     """Get LLM search provider from config."""
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
+        # Debug: log what we're getting from settings
+        logger.info(f"LLM Search Provider: {settings.llm_search_provider}")
+        logger.info(f"Perplexity API Key set: {bool(settings.perplexity_api_key)}")
+        logger.info(f"Tavily API Key set: {bool(settings.tavily_api_key)}")
+
         return get_llm_search_provider(
             provider_type=settings.llm_search_provider,
             perplexity_api_key=settings.perplexity_api_key,
             tavily_api_key=settings.tavily_api_key,
             gemini_api_key=settings.gemini_api_key,
         )
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to create LLM search provider: {e}")
         return None
 
 
@@ -254,10 +263,17 @@ async def test_offers(
     provider = _get_provider()
 
     if not provider:
-        # Return mock data for testing
+        # Return debug info about why provider isn't configured
         return {
-            "status": "mock",
-            "message": "LLM search provider not configured. Returning mock data.",
+            "status": "not_configured",
+            "message": "LLM search provider not configured.",
+            "debug": {
+                "llm_search_provider": settings.llm_search_provider,
+                "perplexity_api_key_set": bool(settings.perplexity_api_key),
+                "perplexity_api_key_prefix": settings.perplexity_api_key[:10] + "..." if settings.perplexity_api_key else None,
+                "tavily_api_key_set": bool(settings.tavily_api_key),
+                "gemini_api_key_set": bool(settings.gemini_api_key),
+            },
             "offers": [
                 {
                     "platform": "swiggy_dineout",
