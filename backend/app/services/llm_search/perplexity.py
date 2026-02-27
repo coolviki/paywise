@@ -8,7 +8,7 @@ import re
 from typing import List, Optional, AsyncIterator
 import httpx
 
-from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform
+from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform, PLATFORM_INFO
 
 
 class PerplexityProvider(LLMSearchProvider):
@@ -184,6 +184,7 @@ Only include currently valid offers."""
                 data = json.loads(json_match.group())
                 for item in data.get("offers", []):
                     platform = self._map_platform(item.get("platform", "unknown"))
+                    platform_info = PLATFORM_INFO.get(platform, {})
                     offers.append(RestaurantOffer(
                         platform=platform,
                         platform_display_name=self._get_platform_display_name(platform),
@@ -194,6 +195,8 @@ Only include currently valid offers."""
                         bank_name=item.get("bank_name"),
                         conditions=item.get("conditions"),
                         coupon_code=item.get("coupon_code"),
+                        app_link=platform_info.get("app_link"),
+                        platform_url=platform_info.get("website"),
                     ))
             except json.JSONDecodeError:
                 # Fall back to text parsing
@@ -239,6 +242,7 @@ Only include currently valid offers."""
         max_match = re.search(r'(?:up to|upto|max)[:\s]*(?:Rs\.?|₹)?\s*(\d+)', discount_text.lower())
         max_discount = float(max_match.group(1)) if max_match else None
 
+        platform_info = PLATFORM_INFO.get(platform, {})
         return RestaurantOffer(
             platform=platform,
             platform_display_name=self._get_platform_display_name(platform),
@@ -248,6 +252,8 @@ Only include currently valid offers."""
             max_discount=max_discount,
             bank_name=bank_name,
             conditions=conditions,
+            app_link=platform_info.get("app_link"),
+            platform_url=platform_info.get("website"),
         )
 
     def _detect_platform(self, text: str) -> Platform:

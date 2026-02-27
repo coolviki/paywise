@@ -105,6 +105,50 @@ interface OfferCardProps {
 }
 
 function OfferCard({ offer, isNew }: OfferCardProps) {
+  /**
+   * Try to open the native app first, fall back to website.
+   * Uses app_link for mobile devices, platform_url for web.
+   */
+  const handleOpenPlatform = (offer: RestaurantOffer) => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile && offer.app_link) {
+      // On mobile, try to open the app
+      // Create a hidden iframe to try the app link
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      // Set a timeout to open web URL if app doesn't open
+      const timeout = setTimeout(() => {
+        if (offer.platform_url) {
+          window.open(offer.platform_url, '_blank');
+        }
+        document.body.removeChild(iframe);
+      }, 1500);
+
+      // Try to open app
+      try {
+        iframe.contentWindow?.location.replace(offer.app_link);
+        // If we're still here after a short delay, the app might have opened
+        setTimeout(() => {
+          clearTimeout(timeout);
+          document.body.removeChild(iframe);
+        }, 100);
+      } catch {
+        // App link failed, open web
+        clearTimeout(timeout);
+        if (offer.platform_url) {
+          window.open(offer.platform_url, '_blank');
+        }
+        document.body.removeChild(iframe);
+      }
+    } else if (offer.platform_url) {
+      // On desktop or if no app link, open website
+      window.open(offer.platform_url, '_blank');
+    }
+  };
+
   const platformColors: Record<string, string> = {
     swiggy_dineout: 'bg-orange-100 text-orange-800 border-orange-200',
     zomato_pay: 'bg-red-100 text-red-800 border-red-200',
@@ -173,16 +217,14 @@ function OfferCard({ offer, isNew }: OfferCardProps) {
             </div>
           )}
 
-          {/* Platform link */}
-          {offer.platform_url && (
-            <a
-              href={offer.platform_url}
-              target="_blank"
-              rel="noopener noreferrer"
+          {/* Platform link - tries app first, falls back to web */}
+          {(offer.app_link || offer.platform_url) && (
+            <button
+              onClick={() => handleOpenPlatform(offer)}
               className="inline-flex items-center gap-1 mt-2 text-xs font-medium underline opacity-75 hover:opacity-100"
             >
               Open in {offer.platform_display_name} →
-            </a>
+            </button>
           )}
         </div>
 

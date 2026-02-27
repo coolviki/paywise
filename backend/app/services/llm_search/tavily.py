@@ -8,7 +8,7 @@ import re
 from typing import List, Optional, AsyncIterator
 import httpx
 
-from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform
+from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform, PLATFORM_INFO
 
 
 class TavilyProvider(LLMSearchProvider):
@@ -157,6 +157,7 @@ Only include currently valid offers. Return empty offers array if no valid offer
         offers = []
         for item in extracted.get("offers", []):
             platform = self._map_platform(item.get("platform", "unknown"))
+            platform_info = PLATFORM_INFO.get(platform, {})
             offers.append(RestaurantOffer(
                 platform=platform,
                 platform_display_name=self._get_platform_display_name(platform),
@@ -167,6 +168,8 @@ Only include currently valid offers. Return empty offers array if no valid offer
                 bank_name=item.get("bank_name"),
                 conditions=item.get("conditions"),
                 coupon_code=item.get("coupon_code"),
+                app_link=platform_info.get("app_link"),
+                platform_url=platform_info.get("website"),
             ))
 
         # Filter offers by user's selected platforms
