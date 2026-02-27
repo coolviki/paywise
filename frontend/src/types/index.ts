@@ -282,3 +282,36 @@ export interface PendingCampaign {
   scraped_at: string;
   reviewed_at?: string;
 }
+
+// Restaurant Offers Types (from Swiggy Dineout, Zomato, EazyDiner, etc.)
+export type RestaurantOfferPlatform =
+  | 'swiggy_dineout'
+  | 'zomato'
+  | 'eazydiner'
+  | 'dineout'
+  | 'magicpin'
+  | 'unknown';
+
+export interface RestaurantOffer {
+  platform: RestaurantOfferPlatform;
+  platform_display_name: string;
+  offer_type: 'pre-booked' | 'walk-in' | 'bank_offer' | 'coupon' | 'general';
+  discount_text: string;
+  discount_percentage?: number;
+  max_discount?: number;
+  min_order?: number;
+  bank_name?: string;
+  card_type?: string;
+  conditions?: string;
+  coupon_code?: string;
+  valid_days?: string;
+  source_url?: string;
+}
+
+export interface RestaurantOffersState {
+  offers: RestaurantOffer[];
+  isLoading: boolean;
+  isStreaming: boolean;
+  summary?: string;
+  error?: string;
+}

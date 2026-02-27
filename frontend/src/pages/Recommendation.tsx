@@ -1,10 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { RecommendationCard } from '../components/recommendation/RecommendationCard';
 import { AIInsight } from '../components/recommendation/AIInsight';
 import { Loading } from '../components/common/Loading';
 import { useRecommendation } from '../hooks/useRecommendation';
+import { RestaurantOffers } from '../components/restaurant/RestaurantOffers';
+
+// Categories that should show restaurant offers
+const DINEOUT_CATEGORIES = [
+  'restaurant',
+  'cafe',
+  'bar',
+  'food',
+  'bakery',
+  'meal_delivery',
+  'meal_takeaway',
+  'night_club',
+  'Food & Dining',
+];
 
 export function Recommendation() {
   const [searchParams] = useSearchParams();
@@ -23,6 +37,26 @@ export function Recommendation() {
       getRecommendation(placeName, placeCategory, placeAddress, placeId);
     }
   }, [placeName, placeCategory, placeAddress, placeId, getRecommendation]);
+
+  // Determine if this is a restaurant/dining place
+  const isDiningPlace = useMemo(() => {
+    const category = recommendation?.place_category || placeCategory || '';
+    return DINEOUT_CATEGORIES.some((c) => category.toLowerCase().includes(c.toLowerCase()));
+  }, [recommendation?.place_category, placeCategory]);
+
+  // Extract city from address (simple heuristic)
+  const city = useMemo(() => {
+    const address = placeAddress || '';
+    // Try to extract city from address (last part before pincode/country)
+    const parts = address.split(',').map((p) => p.trim());
+    if (parts.length >= 2) {
+      // Usually city is second-to-last or third-to-last
+      const cityPart = parts[parts.length - 2] || parts[parts.length - 1];
+      // Remove pincode if present
+      return cityPart.replace(/\d{6}/, '').trim() || 'Delhi';
+    }
+    return 'Delhi'; // Default fallback
+  }, [placeAddress]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -85,6 +119,17 @@ export function Recommendation() {
                     recommendation={alt}
                   />
                 ))}
+              </div>
+            )}
+
+            {/* Restaurant Offers (for dining places only) */}
+            {isDiningPlace && placeName && (
+              <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                <RestaurantOffers
+                  restaurantName={placeName}
+                  city={city}
+                  autoFetch={true}
+                />
               </div>
             )}
           </>

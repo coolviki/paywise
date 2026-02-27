@@ -17,8 +17,60 @@ conn.autocommit = False
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
 # ── 1. Tables already created by alembic migrations (UUID-based) ──────────────
-# No need to create tables here - they exist from the migration
-print("Using existing tables (created by alembic)...")
+# Create campaigns tables if they don't exist (added in 20260226 migration)
+print("Checking/creating campaigns tables...")
+
+# campaigns table
+cur.execute("""
+CREATE TABLE IF NOT EXISTS campaigns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+    benefit_rate NUMERIC(5, 2) NOT NULL,
+    benefit_type VARCHAR(50) NOT NULL,
+    description TEXT,
+    terms_url VARCHAR(500),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+# Create indexes for campaigns
+cur.execute("CREATE INDEX IF NOT EXISTS ix_campaigns_card_id ON campaigns(card_id)")
+cur.execute("CREATE INDEX IF NOT EXISTS ix_campaigns_brand_id ON campaigns(brand_id)")
+cur.execute("CREATE INDEX IF NOT EXISTS ix_campaigns_dates ON campaigns(start_date, end_date)")
+
+# pending_campaigns table
+cur.execute("""
+CREATE TABLE IF NOT EXISTS pending_campaigns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+    benefit_rate NUMERIC(5, 2) NOT NULL,
+    benefit_type VARCHAR(50) NOT NULL,
+    description TEXT,
+    terms_url VARCHAR(500),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    source_url VARCHAR(500),
+    change_type VARCHAR(20) NOT NULL,
+    existing_campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    scraped_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TIMESTAMP,
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+# Create index for pending_campaigns
+cur.execute("CREATE INDEX IF NOT EXISTS ix_pending_campaigns_status ON pending_campaigns(status)")
+
+conn.commit()
+print("Campaigns tables ready.")
 
 # ── 2. Seed brands ────────────────────────────────────────────────────────────
 # See docs/ECOSYSTEM_BENEFITS.md for documentation
@@ -101,6 +153,39 @@ for name, code, desc, keywords in brands_data:
 
 conn.commit()
 print(f"Brands seeded: {list(brand_ids.keys())}")
+
+# ── 2b. Seed missing cards ───────────────────────────────────────────────────
+# Cards that may not exist in the database yet
+missing_cards = [
+    # (name, bank_code, card_type, card_network, annual_fee, reward_type, base_reward_rate)
+    ("HDFC Pixel Credit Card", "hdfc", "credit", "visa", 500, "cashback", 5.0),
+]
+
+for name, bank_code, card_type, card_network, annual_fee, reward_type, base_reward_rate in missing_cards:
+    # Get bank_id
+    cur.execute("SELECT id FROM banks WHERE code = %s", (bank_code,))
+    row = cur.fetchone()
+    if not row:
+        print(f"  SKIP (bank not found): {name}")
+        continue
+    bank_id = row[0]
+
+    # Check if card exists
+    cur.execute("SELECT id FROM cards WHERE bank_id = %s AND name = %s", (bank_id, name))
+    if cur.fetchone():
+        print(f"  EXISTS: {name}")
+        continue
+
+    # Insert card
+    cur.execute(
+        """INSERT INTO cards
+               (id, bank_id, name, card_type, card_network, annual_fee, reward_type, base_reward_rate, is_active, created_at)
+           VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s, true, NOW())""",
+        (bank_id, name, card_type, card_network, annual_fee, reward_type, base_reward_rate),
+    )
+    print(f"  ADDED card: {name}")
+
+conn.commit()
 
 # ── 3. Seed card ecosystem benefits ──────────────────────────────────────────
 # Format: (card_name, bank_code, brand_code, benefit_rate, benefit_type, description)

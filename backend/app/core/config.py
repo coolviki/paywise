@@ -33,7 +33,12 @@ class Settings(BaseSettings):
 
     # Gemini
     gemini_api_key: Optional[str] = None
-    llm_model: str = "gemini-2.5-flash"
+    llm_model: str = "gemini-2.0-flash"
+
+    # LLM Search providers (for restaurant offers)
+    llm_search_provider: str = "perplexity"  # "perplexity" or "tavily"
+    perplexity_api_key: Optional[str] = None
+    tavily_api_key: Optional[str] = None
 
     # Redis
     redis_url: str = "redis://localhost:6379"
