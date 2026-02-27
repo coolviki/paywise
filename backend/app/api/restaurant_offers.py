@@ -15,8 +15,40 @@ from ..core.database import get_db
 from ..core.security import get_current_user, verify_token
 from ..core.config import settings
 from ..models.user import User
+from ..models.card import PaymentMethod
 from ..services.llm_search import get_llm_search_provider, RestaurantOffer, LLMSearchProvider
 from ..services.llm_search.base import Platform, SearchResult
+
+
+def _get_user_enabled_platforms(db: Session, user_id) -> Optional[list[Platform]]:
+    """Get user's enabled dine-out app platforms. Returns None if user hasn't set any (show all)."""
+    enabled_apps = (
+        db.query(PaymentMethod)
+        .filter(
+            PaymentMethod.user_id == user_id,
+            PaymentMethod.payment_type == "dineout_app",
+            PaymentMethod.is_active == True,
+        )
+        .all()
+    )
+
+    if not enabled_apps:
+        return None  # No apps selected, show all platforms
+
+    # Map app codes to Platform enums
+    platform_map = {
+        "swiggy_dineout": Platform.SWIGGY_DINEOUT,
+        "zomato_pay": Platform.ZOMATO_PAY,
+        "eazydiner": Platform.EAZYDINER,
+        "district": Platform.DISTRICT,
+    }
+
+    platforms = []
+    for pm in enabled_apps:
+        if pm.nickname in platform_map:
+            platforms.append(platform_map[pm.nickname])
+
+    return platforms if platforms else None
 
 router = APIRouter()
 
@@ -99,10 +131,10 @@ def _parse_platforms(platforms: Optional[list[str]]) -> Optional[list[Platform]]
     mapping = {
         "swiggy_dineout": Platform.SWIGGY_DINEOUT,
         "swiggy": Platform.SWIGGY_DINEOUT,
-        "zomato": Platform.ZOMATO,
+        "zomato_pay": Platform.ZOMATO_PAY,
+        "zomato": Platform.ZOMATO_PAY,
         "eazydiner": Platform.EAZYDINER,
-        "dineout": Platform.DINEOUT,
-        "magicpin": Platform.MAGICPIN,
+        "district": Platform.DISTRICT,
     }
 
     return [mapping[p.lower()] for p in platforms if p.lower() in mapping]
@@ -112,10 +144,11 @@ def _parse_platforms(platforms: Optional[list[str]]) -> Optional[list[Platform]]
 async def get_restaurant_offers(
     request: RestaurantOffersRequest,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
-    Get dine-in offers for a restaurant from all platforms.
-    Returns structured offers from Swiggy Dineout, Zomato, EazyDiner, etc.
+    Get dine-in offers for a restaurant from user's enabled platforms.
+    If no platforms specified in request, uses user's enabled dine-out apps.
     """
     provider = _get_provider()
     if not provider:
@@ -124,7 +157,11 @@ async def get_restaurant_offers(
             detail="Restaurant offers service not configured. Please set up LLM search provider.",
         )
 
-    platforms = _parse_platforms(request.platforms)
+    # Use platforms from request, or fall back to user's enabled apps
+    if request.platforms:
+        platforms = _parse_platforms(request.platforms)
+    else:
+        platforms = _get_user_enabled_platforms(db, current_user.id)
 
     try:
         result = await provider.search_restaurant_offers(
@@ -152,8 +189,9 @@ async def get_restaurant_offers(
 async def stream_restaurant_offers(
     restaurant_name: str = Query(..., description="Restaurant name"),
     city: str = Query(..., description="City name"),
-    platforms: Optional[str] = Query(None, description="Comma-separated platforms"),
+    platforms: Optional[str] = Query(None, description="Comma-separated platforms (overrides user settings)"),
     user: Optional[User] = Depends(get_user_from_token_param),
+    db: Session = Depends(get_db),
 ):
     """
     Stream restaurant offers via Server-Sent Events (SSE).
@@ -189,8 +227,13 @@ async def stream_restaurant_offers(
             detail="Restaurant offers service not configured",
         )
 
-    platform_list = platforms.split(",") if platforms else None
-    parsed_platforms = _parse_platforms(platform_list)
+    # Use platforms from query param, or fall back to user's enabled apps
+    if platforms:
+        platform_list = platforms.split(",")
+        parsed_platforms = _parse_platforms(platform_list)
+    else:
+        # Get user's enabled dine-out apps
+        parsed_platforms = _get_user_enabled_platforms(db, user.id)
 
     async def event_generator():
         """Generate SSE events for each offer."""

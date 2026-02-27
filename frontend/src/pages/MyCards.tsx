@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, CreditCard, Smartphone, Wallet } from 'lucide-react';
+import { ArrowLeft, Plus, CreditCard, Smartphone, Wallet, UtensilsCrossed } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { CardList } from '../components/cards/CardList';
 import { AddCardModal } from '../components/cards/AddCardModal';
+import { DineoutApps } from '../components/cards/DineoutApps';
 import { useCards } from '../hooks/useCards';
 
 export function MyCards() {
@@ -89,6 +90,20 @@ export function MyCards() {
             <Plus className="w-5 h-5" />
             Add New Debit Card
           </button>
+        </section>
+
+        {/* Dine-out Payment Apps */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
+              <UtensilsCrossed className="w-4 h-4" />
+              Dine-in Payment Apps
+            </h2>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+            Select the apps you use to pay at restaurants. We'll show you offers from these platforms.
+          </p>
+          <DineoutApps />
         </section>
 
         {/* Coming Soon sections */}
