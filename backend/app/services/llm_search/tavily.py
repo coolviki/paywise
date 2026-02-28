@@ -135,10 +135,11 @@ Only include currently valid offers. Return empty offers array if no valid offer
         restaurant_name: str,
         city: str,
         platforms: Optional[List[Platform]] = None,
+        parallel: bool = True,
     ) -> SearchResult:
         """Search for restaurant offers using Tavily + Gemini."""
-        # If multiple platforms, make parallel calls for each platform
-        if platforms and len(platforms) > 1:
+        # If multiple platforms and parallel mode, make parallel calls for each platform
+        if parallel and platforms and len(platforms) > 1:
             return await self._search_parallel(restaurant_name, city, platforms)
 
         return await self._search_single_platform(restaurant_name, city, platforms)
@@ -247,12 +248,13 @@ Only include currently valid offers. Return empty offers array if no valid offer
         restaurant_name: str,
         city: str,
         platforms: Optional[List[Platform]] = None,
+        parallel: bool = True,
     ) -> AsyncIterator[RestaurantOffer]:
         """
         Stream offers. Tavily doesn't natively stream, so we fetch all
         and yield one by one.
         """
-        result = await self.search_restaurant_offers(restaurant_name, city, platforms)
+        result = await self.search_restaurant_offers(restaurant_name, city, platforms, parallel=parallel)
 
         for offer in result.offers:
             yield offer

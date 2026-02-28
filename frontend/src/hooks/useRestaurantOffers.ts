@@ -246,7 +246,7 @@ export function useRestaurantOffersWithFetch() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const streamOffers = useCallback(
-    async (restaurantName: string, city: string, platforms?: string[]) => {
+    async (restaurantName: string, city: string, platforms?: string[], parallel: boolean = true) => {
       // Cancel any existing stream
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -268,6 +268,7 @@ export function useRestaurantOffersWithFetch() {
         const params = new URLSearchParams({
           restaurant_name: restaurantName,
           city: city,
+          parallel: parallel.toString(),
         });
         if (platforms && platforms.length > 0) {
           params.append('platforms', platforms.join(','));

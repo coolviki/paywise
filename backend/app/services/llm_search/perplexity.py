@@ -46,13 +46,14 @@ class PerplexityProvider(LLMSearchProvider):
         restaurant_name: str,
         city: str,
         platforms: Optional[List[Platform]] = None,
+        parallel: bool = True,
     ) -> SearchResult:
         """Search for restaurant offers using Perplexity."""
-        # If multiple platforms, make parallel calls for each platform
-        if platforms and len(platforms) > 1:
+        # If multiple platforms and parallel mode, make parallel calls for each platform
+        if parallel and platforms and len(platforms) > 1:
             return await self._search_parallel(restaurant_name, city, platforms)
 
-        # Single platform or all platforms - single call
+        # Single platform, all platforms, or non-parallel mode - single call
         return await self._search_single_platform(restaurant_name, city, platforms)
 
     async def _search_single_platform(
@@ -170,15 +171,16 @@ IMPORTANT: List ALL offers found, including all bank-specific offers separately.
         restaurant_name: str,
         city: str,
         platforms: Optional[List[Platform]] = None,
+        parallel: bool = True,
     ) -> AsyncIterator[RestaurantOffer]:
         """Stream offers as they are found."""
-        # If multiple platforms, use parallel calls and yield results
-        if platforms and len(platforms) > 1:
+        # If multiple platforms and parallel mode, use parallel calls and yield results
+        if parallel and platforms and len(platforms) > 1:
             async for offer in self._stream_parallel(restaurant_name, city, platforms):
                 yield offer
             return
 
-        # Single platform - use actual streaming
+        # Single platform or non-parallel mode - use actual streaming
         async for offer in self._stream_single_platform(restaurant_name, city, platforms):
             yield offer
 

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRestaurantOffersWithFetch } from '../../hooks/useRestaurantOffers';
 import { RestaurantOffer } from '../../types';
 
@@ -21,6 +21,8 @@ export function RestaurantOffers({
   autoFetch = true,
   platforms,
 }: RestaurantOffersProps) {
+  const [useParallelCalls, setUseParallelCalls] = useState(true);
+
   const {
     offers,
     isLoading,
@@ -33,13 +35,22 @@ export function RestaurantOffers({
 
   useEffect(() => {
     if (autoFetch && restaurantName && city) {
-      streamOffers(restaurantName, city, platforms);
+      streamOffers(restaurantName, city, platforms, useParallelCalls);
     }
 
     return () => {
       clearOffers();
     };
-  }, [restaurantName, city, autoFetch, platforms, streamOffers, clearOffers]);
+  }, [restaurantName, city, autoFetch, platforms, useParallelCalls, streamOffers, clearOffers]);
+
+  const handleModeChange = (parallel: boolean) => {
+    setUseParallelCalls(parallel);
+    // Re-fetch with new mode
+    if (restaurantName && city) {
+      clearOffers();
+      streamOffers(restaurantName, city, platforms, parallel);
+    }
+  };
 
   if (error) {
     return (
@@ -53,7 +64,7 @@ export function RestaurantOffers({
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Dine-in Offers
         </h3>
         {isStreaming && (
@@ -62,6 +73,37 @@ export function RestaurantOffers({
             Finding offers...
           </span>
         )}
+      </div>
+
+      {/* Search Mode Toggle */}
+      <div className="flex items-center gap-4 text-xs">
+        <span className="text-gray-500 dark:text-gray-400">Search mode:</span>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="radio"
+            name="searchMode"
+            checked={useParallelCalls}
+            onChange={() => handleModeChange(true)}
+            disabled={isLoading || isStreaming}
+            className="w-3 h-3 text-blue-600"
+          />
+          <span className={`${useParallelCalls ? 'text-blue-600 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
+            Thorough (per platform)
+          </span>
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="radio"
+            name="searchMode"
+            checked={!useParallelCalls}
+            onChange={() => handleModeChange(false)}
+            disabled={isLoading || isStreaming}
+            className="w-3 h-3 text-blue-600"
+          />
+          <span className={`${!useParallelCalls ? 'text-blue-600 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
+            Quick (single search)
+          </span>
+        </label>
       </div>
 
       {/* Loading state */}

@@ -130,6 +130,7 @@ class LLMSearchProvider(ABC):
         restaurant_name: str,
         city: str,
         platforms: Optional[List[Platform]] = None,
+        parallel: bool = True,
     ) -> SearchResult:
         """
         Search for restaurant offers across dineout platforms.
@@ -138,6 +139,7 @@ class LLMSearchProvider(ABC):
             restaurant_name: Name of the restaurant
             city: City where the restaurant is located
             platforms: Optional list of platforms to search (default: all)
+            parallel: If True and multiple platforms, make parallel calls per platform
 
         Returns:
             SearchResult with structured offers
@@ -150,10 +152,14 @@ class LLMSearchProvider(ABC):
         restaurant_name: str,
         city: str,
         platforms: Optional[List[Platform]] = None,
+        parallel: bool = True,
     ) -> AsyncIterator[RestaurantOffer]:
         """
         Stream restaurant offers as they are found.
         Useful for SSE endpoints.
+
+        Args:
+            parallel: If True and multiple platforms, make parallel calls per platform
 
         Yields:
             RestaurantOffer objects as they are extracted

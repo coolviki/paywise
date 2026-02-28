@@ -190,6 +190,7 @@ async def stream_restaurant_offers(
     restaurant_name: str = Query(..., description="Restaurant name"),
     city: str = Query(..., description="City name"),
     platforms: Optional[str] = Query(None, description="Comma-separated platforms (overrides user settings)"),
+    parallel: bool = Query(True, description="Use parallel LLM calls for each platform (more complete results)"),
     user: Optional[User] = Depends(get_user_from_token_param),
     db: Session = Depends(get_db),
 ):
@@ -249,6 +250,7 @@ async def stream_restaurant_offers(
                 restaurant_name=restaurant_name,
                 city=city,
                 platforms=parsed_platforms,
+                parallel=parallel,
             ):
                 offers_count += 1
                 # Send each offer as a message event
@@ -264,6 +266,7 @@ async def stream_restaurant_offers(
                     restaurant_name=restaurant_name,
                     city=city,
                     platforms=parsed_platforms,
+                    parallel=parallel,
                 )
                 for offer in result.offers:
                     offers_count += 1
