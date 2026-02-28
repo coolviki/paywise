@@ -63,9 +63,12 @@ function PlaceCard({ merchant, onSelect }: PlaceCardProps) {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900 dark:text-white">{merchant.name}</p>
             {nearestLocation?.address && (
-              <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
-                {nearestLocation.address.split(',')[0]}
-              </p>
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                <p className="truncate">{nearestLocation.address.split(',')[0]}</p>
+                <p className="truncate text-gray-500 dark:text-gray-400">
+                  {nearestLocation.address.split(',').slice(1, 3).join(',').trim()}
+                </p>
+              </div>
             )}
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               {nearestLocation?.distance_km !== undefined && (
