@@ -1,5 +1,5 @@
 import api from './api';
-import { Brand, BrandListItem, EcosystemBenefit, CardSimple, CardFull, BankSimple, PendingChange, ScraperStatus, PendingBrand, PendingCard, Campaign, PendingCampaign } from '../types';
+import { Brand, BrandListItem, EcosystemBenefit, CardSimple, CardFull, BankSimple, PendingChange, ScraperStatus, PendingBrand, PendingCard, Campaign, PendingCampaign, DuplicateCardsResponse } from '../types';
 
 // Brands
 export const getBrands = async (): Promise<BrandListItem[]> => {
@@ -374,4 +374,30 @@ export const rejectPendingCampaign = async (
 
 export const deletePendingCampaign = async (campaignId: string): Promise<void> => {
   await api.delete(`/admin/pending-campaigns/${campaignId}`);
+};
+
+// Duplicate Cards
+export const findDuplicateCards = async (): Promise<DuplicateCardsResponse> => {
+  const response = await api.get('/admin/cards/duplicates');
+  return response.data;
+};
+
+export const mergeCards = async (
+  keepCardId: string,
+  duplicateCardIds: string[]
+): Promise<{ message: string }> => {
+  const response = await api.post('/admin/cards/merge', {
+    keep_card_id: keepCardId,
+    duplicate_card_ids: duplicateCardIds,
+  });
+  return response.data;
+};
+
+export const autoDedupeCards = async (): Promise<{
+  message: string;
+  groups_processed: number;
+  cards_merged: number;
+}> => {
+  const response = await api.post('/admin/cards/auto-dedupe');
+  return response.data;
 };

@@ -161,6 +161,11 @@ class CardResponse(BaseModel):
         from_attributes = True
 
 
+class MergeCardsRequest(BaseModel):
+    keep_card_id: UUID
+    duplicate_card_ids: List[UUID]
+
+
 # ============================================
 # Pending Changes Schemas (for scraper)
 # ============================================

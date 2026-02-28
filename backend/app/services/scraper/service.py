@@ -9,8 +9,8 @@ from uuid import UUID
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from ...models import Card, Bank, Brand, BrandKeyword, CardEcosystemBenefit, PendingEcosystemChange, PendingBrandChange, PendingCardChange
-from .base import ScrapedBenefit
+from ...models import Card, Bank, Brand, BrandKeyword, CardEcosystemBenefit, PendingEcosystemChange, PendingBrandChange, PendingCardChange, Campaign, PendingCampaign
+from .base import ScrapedBenefit, ScrapedCampaign
 from .hdfc import HDFCScraper
 from .icici import ICICIScraper
 from .sbi import SBIScraper
@@ -42,7 +42,9 @@ class ScraperStatus:
         self.last_run: Optional[datetime] = None
         self.last_result: Optional[str] = None
         self.benefits_found: int = 0
+        self.campaigns_found: int = 0
         self.pending_created: int = 0
+        self.pending_campaigns_created: int = 0
         self.brands_created: int = 0
         self.cards_created: int = 0
         self.errors: List[str] = []
@@ -84,7 +86,9 @@ class ScraperService:
             scraper_status.is_running = True
             scraper_status.errors = []
             scraper_status.benefits_found = 0
+            scraper_status.campaigns_found = 0
             scraper_status.pending_created = 0
+            scraper_status.pending_campaigns_created = 0
             scraper_status.brands_created = 0
             scraper_status.cards_created = 0
 
@@ -97,6 +101,7 @@ class ScraperService:
                 scrapers_to_run = list(self.SCRAPERS.items())
 
             all_benefits = []
+            all_campaigns = []
 
             for bank_name, scraper_class in scrapers_to_run:
                 scraper_status.current_bank = bank_name
@@ -108,6 +113,11 @@ class ScraperService:
                     benefits = asyncio.run(scraper.scrape())
                     all_benefits.extend(benefits)
                     scraper_status.benefits_found += len(benefits)
+
+                    # Also scrape campaigns
+                    campaigns = asyncio.run(scraper.scrape_campaigns())
+                    all_campaigns.extend(campaigns)
+                    scraper_status.campaigns_found += len(campaigns)
                 except Exception as e:
                     error_msg = f"Error scraping {bank_name}: {str(e)}"
                     self.logger.error(error_msg)
@@ -117,6 +127,10 @@ class ScraperService:
             pending_count = self._create_pending_changes(all_benefits)
             scraper_status.pending_created = pending_count
 
+            # Process campaigns and create pending campaign changes
+            pending_campaigns_count = self._create_pending_campaigns(all_campaigns)
+            scraper_status.pending_campaigns_created = pending_campaigns_count
+
             scraper_status.last_run = datetime.utcnow()
             scraper_status.last_result = "success" if not scraper_status.errors else "partial"
             scraper_status.current_bank = None
@@ -124,7 +138,9 @@ class ScraperService:
             return {
                 "status": "completed",
                 "benefits_found": scraper_status.benefits_found,
+                "campaigns_found": scraper_status.campaigns_found,
                 "pending_created": scraper_status.pending_created,
+                "pending_campaigns_created": scraper_status.pending_campaigns_created,
                 "brands_created": scraper_status.brands_created,
                 "cards_created": scraper_status.cards_created,
                 "errors": scraper_status.errors
@@ -242,6 +258,108 @@ class ScraperService:
         self.db.commit()
         return pending_count
 
+    def _create_pending_campaigns(self, campaigns: List[ScrapedCampaign]) -> int:
+        """Create pending campaign changes from scraped campaigns."""
+        pending_count = 0
+
+        for campaign in campaigns:
+            try:
+                # Find matching card
+                card = self._find_card(campaign.card_name)
+                if not card:
+                    self.logger.debug(f"Card not found for campaign: {campaign.card_name}")
+                    continue
+
+                # Find brand
+                brand = self._find_brand(campaign.brand_name)
+                if not brand:
+                    self.logger.debug(f"Brand not found for campaign: {campaign.brand_name}")
+                    continue
+
+                # Check if there's an existing campaign for this card/brand/date range
+                existing_campaign = self._find_existing_campaign(
+                    card.id, brand.id, campaign.start_date, campaign.end_date
+                )
+
+                # Check if there's already a pending campaign
+                existing_pending = self._find_existing_pending_campaign(
+                    card.id, brand.id, campaign.start_date, campaign.end_date
+                )
+                if existing_pending:
+                    self.logger.debug(f"Pending campaign already exists for {card.name} - {brand.name}")
+                    continue
+
+                if existing_campaign:
+                    # Create update if rate changed
+                    if float(existing_campaign.benefit_rate) != campaign.benefit_rate:
+                        pending = PendingCampaign(
+                            card_id=card.id,
+                            brand_id=brand.id,
+                            benefit_rate=campaign.benefit_rate,
+                            benefit_type=campaign.benefit_type,
+                            description=campaign.description,
+                            terms_url=campaign.terms_url,
+                            start_date=campaign.start_date,
+                            end_date=campaign.end_date,
+                            source_url=campaign.source_url,
+                            change_type="update",
+                            existing_campaign_id=existing_campaign.id,
+                            status="pending"
+                        )
+                        self.db.add(pending)
+                        pending_count += 1
+                else:
+                    # Create new campaign
+                    pending = PendingCampaign(
+                        card_id=card.id,
+                        brand_id=brand.id,
+                        benefit_rate=campaign.benefit_rate,
+                        benefit_type=campaign.benefit_type,
+                        description=campaign.description,
+                        terms_url=campaign.terms_url,
+                        start_date=campaign.start_date,
+                        end_date=campaign.end_date,
+                        source_url=campaign.source_url,
+                        change_type="new",
+                        status="pending"
+                    )
+                    self.db.add(pending)
+                    pending_count += 1
+
+            except Exception as e:
+                self.logger.error(f"Error processing campaign: {e}")
+                continue
+
+        self.db.commit()
+        return pending_count
+
+    def _find_existing_campaign(
+        self, card_id: UUID, brand_id: UUID, start_date, end_date
+    ) -> Optional[Campaign]:
+        """Find existing campaign with overlapping dates."""
+        return self.db.query(Campaign).filter(
+            and_(
+                Campaign.card_id == card_id,
+                Campaign.brand_id == brand_id,
+                Campaign.start_date == start_date,
+                Campaign.end_date == end_date
+            )
+        ).first()
+
+    def _find_existing_pending_campaign(
+        self, card_id: UUID, brand_id: UUID, start_date, end_date
+    ) -> Optional[PendingCampaign]:
+        """Find existing pending campaign."""
+        return self.db.query(PendingCampaign).filter(
+            and_(
+                PendingCampaign.card_id == card_id,
+                PendingCampaign.brand_id == brand_id,
+                PendingCampaign.start_date == start_date,
+                PendingCampaign.end_date == end_date,
+                PendingCampaign.status == "pending"
+            )
+        ).first()
+
     def _find_existing_pending_brand(self, code: str) -> Optional[PendingBrandChange]:
         """Find existing pending brand by code."""
         return self.db.query(PendingBrandChange).filter(
@@ -252,20 +370,60 @@ class ScraperService:
         ).first()
 
     def _find_card(self, card_name: str) -> Optional[Card]:
-        """Find a card by name (fuzzy matching)."""
+        """
+        Find a card by name (fuzzy matching with deduplication awareness).
+        Handles cases like "ICICI Coral" vs "ICICI Coral Credit Card".
+        """
+        # Normalize the search name
+        normalized_search = self._normalize_card_name_for_search(card_name)
+
         # Try exact match first
         card = self.db.query(Card).filter(Card.name.ilike(f"%{card_name}%")).first()
+        if card:
+            return card
 
+        # Try matching with normalized name
+        card = self.db.query(Card).filter(Card.name.ilike(f"%{normalized_search}%")).first()
         if card:
             return card
 
         # Try matching with bank prefix
-        for bank in ["HDFC", "ICICI", "SBI"]:
+        for bank in ["HDFC", "ICICI", "SBI", "Axis", "Kotak", "RBL"]:
             card = self.db.query(Card).filter(Card.name.ilike(f"%{bank}%{card_name}%")).first()
+            if card:
+                return card
+            card = self.db.query(Card).filter(Card.name.ilike(f"%{bank}%{normalized_search}%")).first()
             if card:
                 return card
 
         return None
+
+    def _normalize_card_name_for_search(self, name: str) -> str:
+        """
+        Normalize card name for searching.
+        Removes common prefixes/suffixes to find potential matches.
+        """
+        import re
+
+        name = name.strip()
+
+        # Remove bank name prefixes
+        bank_prefixes = [
+            "HDFC Bank", "HDFC", "ICICI Bank", "ICICI",
+            "SBI Card", "SBI", "Axis Bank", "Axis",
+            "Kotak Mahindra", "Kotak", "RBL Bank", "RBL"
+        ]
+        for prefix in bank_prefixes:
+            if name.upper().startswith(prefix.upper()):
+                name = name[len(prefix):].strip()
+
+        # Remove common suffixes
+        suffixes_to_remove = ["Credit Card", "Debit Card", "Card"]
+        for suffix in suffixes_to_remove:
+            if name.upper().endswith(suffix.upper()):
+                name = name[:-len(suffix)].strip()
+
+        return name
 
     def _find_brand(self, brand_name: str) -> Optional[Brand]:
         """Find a brand by name or keyword."""
@@ -315,11 +473,26 @@ class ScraperService:
             self.logger.error(f"Bank not found: {bank_code}")
             return False
 
-        # Check if there's already a pending card with this name for this bank
+        # Normalize the card name
+        normalized_name = self._normalize_card_name_for_search(card_name)
+
+        # Check if there's already an existing card with similar name (including duplicates)
+        existing_card = self.db.query(Card).filter(
+            and_(
+                Card.bank_id == bank.id,
+                Card.name.ilike(f"%{normalized_name}%")
+            )
+        ).first()
+
+        if existing_card:
+            self.logger.debug(f"Card already exists (may be duplicate): {card_name} -> {existing_card.name}")
+            return False
+
+        # Check if there's already a pending card with similar name for this bank
         existing_pending = self.db.query(PendingCardChange).filter(
             and_(
                 PendingCardChange.bank_id == bank.id,
-                PendingCardChange.name.ilike(f"%{card_name}%"),
+                PendingCardChange.name.ilike(f"%{normalized_name}%"),
                 PendingCardChange.status == "pending"
             )
         ).first()
@@ -345,7 +518,7 @@ class ScraperService:
         elif "amex" in name_lower or "american express" in name_lower:
             card_network = "amex"
 
-        # Create pending card
+        # Create pending card with normalized name to prevent duplicates
         pending = PendingCardChange(
             bank_id=bank.id,
             name=card_name,
@@ -507,7 +680,9 @@ class ScraperService:
             "last_run": scraper_status.last_run.isoformat() if scraper_status.last_run else None,
             "last_result": scraper_status.last_result,
             "benefits_found": scraper_status.benefits_found,
+            "campaigns_found": scraper_status.campaigns_found,
             "pending_created": scraper_status.pending_created,
+            "pending_campaigns_created": scraper_status.pending_campaigns_created,
             "brands_created": scraper_status.brands_created,
             "cards_created": scraper_status.cards_created,
             "errors": scraper_status.errors
@@ -625,3 +800,215 @@ class ScraperService:
         self.db.delete(pending)
         self.db.commit()
         return True
+
+    # ============================================
+    # PENDING CAMPAIGN OPERATIONS
+    # ============================================
+
+    def get_pending_campaigns(self, status: Optional[str] = None) -> List[PendingCampaign]:
+        """Get all pending campaign changes, optionally filtered by status."""
+        query = self.db.query(PendingCampaign)
+
+        if status:
+            query = query.filter(PendingCampaign.status == status)
+
+        query = query.order_by(PendingCampaign.created_at.desc())
+
+        return query.all()
+
+    def approve_campaign(self, campaign_id: UUID, reviewer_id: UUID) -> Optional[Campaign]:
+        """Approve a pending campaign and create/update it in the database."""
+        pending = self.db.query(PendingCampaign).filter(
+            PendingCampaign.id == campaign_id
+        ).first()
+
+        if not pending or pending.status != "pending":
+            return None
+
+        try:
+            if pending.change_type == "new":
+                # Create new campaign
+                campaign = Campaign(
+                    card_id=pending.card_id,
+                    brand_id=pending.brand_id,
+                    benefit_rate=pending.benefit_rate,
+                    benefit_type=pending.benefit_type,
+                    description=pending.description,
+                    terms_url=pending.terms_url,
+                    start_date=pending.start_date,
+                    end_date=pending.end_date,
+                    is_active=True
+                )
+                self.db.add(campaign)
+
+            elif pending.change_type == "update":
+                # Update existing campaign
+                campaign = self.db.query(Campaign).filter(
+                    Campaign.id == pending.existing_campaign_id
+                ).first()
+                if campaign:
+                    campaign.benefit_rate = pending.benefit_rate
+                    campaign.benefit_type = pending.benefit_type
+                    campaign.description = pending.description
+                    campaign.terms_url = pending.terms_url
+                    campaign.start_date = pending.start_date
+                    campaign.end_date = pending.end_date
+
+            elif pending.change_type == "delete":
+                # Delete existing campaign
+                campaign = self.db.query(Campaign).filter(
+                    Campaign.id == pending.existing_campaign_id
+                ).first()
+                if campaign:
+                    self.db.delete(campaign)
+                    campaign = None
+
+            # Update pending status
+            pending.status = "approved"
+            pending.reviewed_at = datetime.utcnow()
+            pending.reviewed_by = reviewer_id
+
+            self.db.commit()
+            return campaign if pending.change_type != "delete" else None
+
+        except Exception as e:
+            self.logger.error(f"Error approving campaign: {e}")
+            self.db.rollback()
+            return None
+
+    def reject_campaign(self, campaign_id: UUID, reviewer_id: UUID) -> bool:
+        """Reject a pending campaign."""
+        pending = self.db.query(PendingCampaign).filter(
+            PendingCampaign.id == campaign_id
+        ).first()
+
+        if not pending or pending.status != "pending":
+            return False
+
+        pending.status = "rejected"
+        pending.reviewed_at = datetime.utcnow()
+        pending.reviewed_by = reviewer_id
+
+        self.db.commit()
+        return True
+
+    def update_pending_campaign(
+        self,
+        campaign_id: UUID,
+        benefit_rate: Optional[float] = None,
+        benefit_type: Optional[str] = None,
+        description: Optional[str] = None,
+        start_date=None,
+        end_date=None
+    ) -> Optional[PendingCampaign]:
+        """Update a pending campaign before approval."""
+        pending = self.db.query(PendingCampaign).filter(
+            PendingCampaign.id == campaign_id
+        ).first()
+
+        if not pending or pending.status != "pending":
+            return None
+
+        if benefit_rate is not None:
+            pending.benefit_rate = benefit_rate
+        if benefit_type is not None:
+            pending.benefit_type = benefit_type
+        if description is not None:
+            pending.description = description
+        if start_date is not None:
+            pending.start_date = start_date
+        if end_date is not None:
+            pending.end_date = end_date
+
+        self.db.commit()
+        self.db.refresh(pending)
+
+        return pending
+
+    def delete_pending_campaign(self, campaign_id: UUID) -> bool:
+        """Delete a pending campaign."""
+        pending = self.db.query(PendingCampaign).filter(
+            PendingCampaign.id == campaign_id
+        ).first()
+
+        if not pending:
+            return False
+
+        self.db.delete(pending)
+        self.db.commit()
+        return True
+
+    # ============================================
+    # DUPLICATE CARD CLEANUP
+    # ============================================
+
+    def find_duplicate_cards(self) -> Dict[str, List[Card]]:
+        """
+        Find duplicate cards based on normalized names.
+        Returns a dict with normalized name as key and list of duplicate cards as value.
+        """
+        all_cards = self.db.query(Card).all()
+        normalized_map: Dict[str, List[Card]] = {}
+
+        for card in all_cards:
+            normalized = self._normalize_card_name_for_search(card.name).lower()
+            # Also include bank code for grouping
+            bank_code = card.bank.code if card.bank else "unknown"
+            key = f"{bank_code}:{normalized}"
+
+            if key not in normalized_map:
+                normalized_map[key] = []
+            normalized_map[key].append(card)
+
+        # Only return groups with duplicates
+        return {k: v for k, v in normalized_map.items() if len(v) > 1}
+
+    def merge_duplicate_cards(self, keep_card_id: UUID, duplicate_card_ids: List[UUID]) -> bool:
+        """
+        Merge duplicate cards by moving all references to the card to keep.
+        Deletes the duplicate cards after merging.
+        """
+        try:
+            keep_card = self.db.query(Card).filter(Card.id == keep_card_id).first()
+            if not keep_card:
+                return False
+
+            for dup_id in duplicate_card_ids:
+                if dup_id == keep_card_id:
+                    continue
+
+                dup_card = self.db.query(Card).filter(Card.id == dup_id).first()
+                if not dup_card:
+                    continue
+
+                # Move ecosystem benefits
+                self.db.query(CardEcosystemBenefit).filter(
+                    CardEcosystemBenefit.card_id == dup_id
+                ).update({"card_id": keep_card_id})
+
+                # Move campaigns
+                self.db.query(Campaign).filter(
+                    Campaign.card_id == dup_id
+                ).update({"card_id": keep_card_id})
+
+                # Move pending ecosystem changes
+                self.db.query(PendingEcosystemChange).filter(
+                    PendingEcosystemChange.card_id == dup_id
+                ).update({"card_id": keep_card_id})
+
+                # Move pending campaigns
+                self.db.query(PendingCampaign).filter(
+                    PendingCampaign.card_id == dup_id
+                ).update({"card_id": keep_card_id})
+
+                # Delete the duplicate card
+                self.db.delete(dup_card)
+
+            self.db.commit()
+            self.logger.info(f"Merged {len(duplicate_card_ids)} cards into {keep_card.name}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error merging duplicate cards: {e}")
+            self.db.rollback()
+            return False

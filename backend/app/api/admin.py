@@ -14,7 +14,7 @@ from ..schemas.admin import (
     BrandCreate, BrandUpdate, BrandResponse, BrandListResponse,
     KeywordCreate, KeywordResponse,
     EcosystemBenefitCreate, EcosystemBenefitUpdate, EcosystemBenefitResponse,
-    CardSimple, CardCreate, CardUpdate, CardResponse, BankSimple,
+    CardSimple, CardCreate, CardUpdate, CardResponse, BankSimple, MergeCardsRequest,
     PendingChangeResponse, PendingChangeUpdate, ScraperStatusResponse,
     PendingBrandResponse, PendingBrandUpdate,
     PendingCardResponse, PendingCardUpdate, PendingCardCreate,
@@ -1599,3 +1599,99 @@ async def delete_pending_campaign(
 
     db.delete(pending)
     db.commit()
+
+
+# ============================================
+# DUPLICATE CARDS ENDPOINTS
+# ============================================
+
+@router.get("/cards/duplicates")
+async def find_duplicate_cards(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """
+    Find duplicate cards based on normalized card names.
+    Returns groups of cards that appear to be duplicates.
+    """
+    service = ScraperService(db)
+    duplicates = service.find_duplicate_cards()
+
+    # Convert to response format
+    result = []
+    for key, cards in duplicates.items():
+        bank_code, normalized_name = key.split(":", 1)
+        result.append({
+            "normalized_name": normalized_name,
+            "bank_code": bank_code,
+            "cards": [
+                {
+                    "id": str(card.id),
+                    "name": card.name,
+                    "bank_name": card.bank.name if card.bank else "Unknown",
+                    "card_type": card.card_type,
+                    "card_network": card.card_network,
+                    "annual_fee": float(card.annual_fee) if card.annual_fee else None,
+                    "is_active": card.is_active,
+                }
+                for card in cards
+            ]
+        })
+
+    return {
+        "duplicate_groups": result,
+        "total_groups": len(result),
+        "total_duplicates": sum(len(group["cards"]) for group in result)
+    }
+
+
+@router.post("/cards/merge")
+async def merge_duplicate_cards(
+    data: MergeCardsRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """
+    Merge duplicate cards into a single card.
+    All references (benefits, campaigns, etc.) are moved to the kept card.
+    Duplicate cards are deleted after merging.
+    """
+    service = ScraperService(db)
+    success = service.merge_duplicate_cards(data.keep_card_id, list(data.duplicate_card_ids))
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to merge cards")
+
+    return {"message": f"Successfully merged {len(data.duplicate_card_ids)} cards"}
+
+
+@router.post("/cards/auto-dedupe")
+async def auto_dedupe_cards(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """
+    Automatically deduplicate cards by keeping the shorter-named card
+    (e.g., "ICICI Coral" over "ICICI Coral Credit Card").
+    """
+    service = ScraperService(db)
+    duplicates = service.find_duplicate_cards()
+
+    merged_count = 0
+    for key, cards in duplicates.items():
+        if len(cards) < 2:
+            continue
+
+        # Sort by name length - keep the shortest name (usually the cleaner one)
+        sorted_cards = sorted(cards, key=lambda c: len(c.name))
+        keep_card = sorted_cards[0]
+        duplicate_ids = [c.id for c in sorted_cards[1:]]
+
+        if service.merge_duplicate_cards(keep_card.id, duplicate_ids):
+            merged_count += len(duplicate_ids)
+
+    return {
+        "message": f"Auto-deduplication complete",
+        "groups_processed": len(duplicates),
+        "cards_merged": merged_count
+    }

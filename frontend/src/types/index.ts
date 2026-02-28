@@ -204,10 +204,32 @@ export interface ScraperStatus {
   last_run?: string;
   last_result?: 'success' | 'partial' | 'failed';
   benefits_found: number;
+  campaigns_found: number;
   pending_created: number;
+  pending_campaigns_created: number;
   brands_created: number;
   cards_created: number;
   errors: string[];
+}
+
+export interface DuplicateCardGroup {
+  normalized_name: string;
+  bank_code: string;
+  cards: {
+    id: string;
+    name: string;
+    bank_name: string;
+    card_type: string;
+    card_network?: string;
+    annual_fee?: number;
+    is_active: boolean;
+  }[];
+}
+
+export interface DuplicateCardsResponse {
+  duplicate_groups: DuplicateCardGroup[];
+  total_groups: number;
+  total_duplicates: number;
 }
 
 export interface PendingBrand {

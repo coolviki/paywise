@@ -2,11 +2,12 @@
 
 import asyncio
 import re
+from datetime import date, timedelta
 from typing import List, Optional
 import httpx
 from bs4 import BeautifulSoup
 
-from .base import BaseScraper, ScrapedBenefit
+from .base import BaseScraper, ScrapedBenefit, ScrapedCampaign
 
 
 class ICICIScraper(BaseScraper):
@@ -170,5 +171,105 @@ class ICICIScraper(BaseScraper):
         for b in existing:
             if (b.card_name.lower() == benefit.card_name.lower() and
                 b.brand_name.lower() == benefit.brand_name.lower()):
+                return True
+        return False
+
+    async def scrape_campaigns(self) -> List[ScrapedCampaign]:
+        """Scrape time-bound campaigns from ICICI Bank website."""
+        self.logger.info("Starting ICICI Bank campaign scraping...")
+
+        campaigns = []
+        today = date.today()
+
+        # Known ICICI campaigns (fallback data)
+        known_campaigns = [
+            ScrapedCampaign(
+                card_name="Amazon Pay",
+                brand_name="Amazon",
+                benefit_rate=10.0,
+                benefit_type="cashback",
+                start_date=today,
+                end_date=today + timedelta(days=30),
+                description="10% cashback on Amazon Great Indian Festival",
+                terms_url="https://www.icicibank.com/personal-banking/cards/credit-card/amazon-pay-credit-card",
+                source_url="https://www.icicibank.com/personal-banking/cards/credit-card/amazon-pay-credit-card"
+            ),
+        ]
+
+        campaigns.extend(known_campaigns)
+
+        # Try to scrape actual campaigns
+        try:
+            scraped_campaigns = await self._scrape_campaigns_from_website()
+            for campaign in scraped_campaigns:
+                if not self._campaign_exists(campaign, campaigns):
+                    campaigns.append(campaign)
+        except Exception as e:
+            self.logger.warning(f"Error scraping ICICI campaigns: {e}")
+
+        self.logger.info(f"Found {len(campaigns)} ICICI campaigns")
+        return campaigns
+
+    async def _scrape_campaigns_from_website(self) -> List[ScrapedCampaign]:
+        """Scrape campaigns from ICICI offers page."""
+        campaigns = []
+
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            try:
+                url = f"{self.base_url}/personal-banking/cards/credit-card/credit-card-offers"
+                response = await client.get(url)
+
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    campaigns = self._parse_campaigns_page(soup, url)
+
+            except Exception as e:
+                self.logger.debug(f"Error scraping ICICI offers: {e}")
+
+        return campaigns
+
+    def _parse_campaigns_page(self, soup: BeautifulSoup, url: str) -> List[ScrapedCampaign]:
+        """Parse campaigns from offers page."""
+        campaigns = []
+        today = date.today()
+
+        offer_sections = soup.find_all(['div', 'section'], class_=re.compile(r'offer|promo|campaign', re.I))
+
+        for section in offer_sections:
+            text = section.get_text()
+            rate = self.parse_benefit_rate(text)
+
+            if rate:
+                benefit_type = self.detect_benefit_type(text)
+                brand = self._extract_brand(text)
+                card = self._extract_card_from_text(text)
+
+                if brand and card:
+                    campaigns.append(ScrapedCampaign(
+                        card_name=card,
+                        brand_name=brand,
+                        benefit_rate=rate,
+                        benefit_type=benefit_type,
+                        start_date=today,
+                        end_date=today + timedelta(days=30),
+                        description=text[:300].strip(),
+                        source_url=url
+                    ))
+
+        return campaigns
+
+    def _extract_card_from_text(self, text: str) -> Optional[str]:
+        """Extract card name from text."""
+        for card_name in self.CARD_PAGES.keys():
+            if card_name.lower() in text.lower():
+                return card_name
+        return None
+
+    def _campaign_exists(self, campaign: ScrapedCampaign, existing: List[ScrapedCampaign]) -> bool:
+        """Check if campaign exists."""
+        for c in existing:
+            if (c.card_name.lower() == campaign.card_name.lower() and
+                c.brand_name.lower() == campaign.brand_name.lower() and
+                c.start_date == campaign.start_date):
                 return True
         return False
