@@ -5,6 +5,7 @@ Tavily is a search API optimized for LLMs - we combine it with Gemini for extrac
 
 import json
 import re
+import asyncio
 from typing import List, Optional, AsyncIterator
 import httpx
 
@@ -136,7 +137,19 @@ Only include currently valid offers. Return empty offers array if no valid offer
         platforms: Optional[List[Platform]] = None,
     ) -> SearchResult:
         """Search for restaurant offers using Tavily + Gemini."""
+        # If multiple platforms, make parallel calls for each platform
+        if platforms and len(platforms) > 1:
+            return await self._search_parallel(restaurant_name, city, platforms)
 
+        return await self._search_single_platform(restaurant_name, city, platforms)
+
+    async def _search_single_platform(
+        self,
+        restaurant_name: str,
+        city: str,
+        platforms: Optional[List[Platform]] = None,
+    ) -> SearchResult:
+        """Search for offers on a single platform."""
         # Build search query
         platform_names = ["Swiggy Dineout", "Zomato Pay", "EazyDiner"]
         if platforms:
@@ -191,6 +204,44 @@ Only include currently valid offers. Return empty offers array if no valid offer
             provider=self.provider_name,
         )
 
+    async def _search_parallel(
+        self,
+        restaurant_name: str,
+        city: str,
+        platforms: List[Platform],
+    ) -> SearchResult:
+        """Search multiple platforms in parallel and merge results."""
+        # Create tasks for each platform
+        tasks = [
+            self._search_single_platform(restaurant_name, city, [platform])
+            for platform in platforms
+        ]
+
+        # Run all searches in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Merge results
+        all_offers = []
+        all_sources = []
+        summaries = []
+
+        for result in results:
+            if isinstance(result, Exception):
+                continue
+            all_offers.extend(result.offers)
+            all_sources.extend(result.sources)
+            if result.summary:
+                summaries.append(result.summary)
+
+        return SearchResult(
+            restaurant_name=restaurant_name,
+            city=city,
+            offers=all_offers,
+            summary=" | ".join(summaries) if summaries else None,
+            sources=list(set(all_sources)),
+            provider=self.provider_name,
+        )
+
     async def search_restaurant_offers_stream(
         self,
         restaurant_name: str,
@@ -199,7 +250,7 @@ Only include currently valid offers. Return empty offers array if no valid offer
     ) -> AsyncIterator[RestaurantOffer]:
         """
         Stream offers. Tavily doesn't natively stream, so we fetch all
-        and yield one by one with small delays for UX.
+        and yield one by one.
         """
         result = await self.search_restaurant_offers(restaurant_name, city, platforms)
 

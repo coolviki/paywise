@@ -5,6 +5,7 @@ Uses Perplexity's sonar model which has built-in web search.
 
 import json
 import re
+import asyncio
 from typing import List, Optional, AsyncIterator
 import httpx
 
@@ -47,27 +48,29 @@ class PerplexityProvider(LLMSearchProvider):
         platforms: Optional[List[Platform]] = None,
     ) -> SearchResult:
         """Search for restaurant offers using Perplexity."""
+        # If multiple platforms, make parallel calls for each platform
+        if platforms and len(platforms) > 1:
+            return await self._search_parallel(restaurant_name, city, platforms)
+
+        # Single platform or all platforms - single call
+        return await self._search_single_platform(restaurant_name, city, platforms)
+
+    async def _search_single_platform(
+        self,
+        restaurant_name: str,
+        city: str,
+        platforms: Optional[List[Platform]] = None,
+    ) -> SearchResult:
+        """Search for offers on a single platform."""
         client = await self._get_client()
 
         prompt = self._build_search_prompt(restaurant_name, city, platforms)
 
-        # Build platform-specific instructions
-        platform_count = len(platforms) if platforms else 3
-        platform_instruction = ""
-        if platforms and len(platforms) > 1:
-            platform_names = [PLATFORM_INFO.get(p, {}).get("display_name", p.value) for p in platforms]
-            platform_instruction = f"""
-CRITICAL: You MUST search and return offers from ALL {platform_count} platforms: {', '.join(platform_names)}.
-Do NOT summarize or skip any platform. List EVERY offer you find from EACH platform separately.
-If a platform has multiple offers (e.g., different bank offers), list each one as a separate entry.
-"""
-
-        system_prompt = f"""You are a helpful assistant that finds restaurant dine-in offers.
-{platform_instruction}
+        system_prompt = """You are a helpful assistant that finds restaurant dine-in offers.
 Return your response in the following JSON format:
-{{
+{
     "offers": [
-        {{
+        {
             "platform": "swiggy_dineout|zomato|eazydiner|district",
             "offer_type": "pre-booked|walk-in|bank_offer|coupon|general",
             "discount_text": "Full description of the offer",
@@ -76,10 +79,10 @@ Return your response in the following JSON format:
             "bank_name": "HDFC" or null,
             "conditions": "Valid on weekdays" or null,
             "coupon_code": "CODE123" or null
-        }}
+        }
     ],
     "summary": "Brief summary of best deals available"
-}}
+}
 
 Platform mapping:
 - Swiggy Dineout, Dineout → "swiggy_dineout"
@@ -87,7 +90,7 @@ Platform mapping:
 - EazyDiner → "eazydiner"
 - District → "district"
 
-IMPORTANT: Be EXHAUSTIVE. List ALL offers found, not just the best ones. Include all bank-specific offers separately."""
+IMPORTANT: List ALL offers found, including all bank-specific offers separately."""
 
         payload = {
             "model": self.model,
@@ -102,14 +105,12 @@ IMPORTANT: Be EXHAUSTIVE. List ALL offers found, not just the best ones. Include
         response.raise_for_status()
         data = response.json()
 
-        # Extract response
         content = data["choices"][0]["message"]["content"]
         citations = data.get("citations", [])
 
-        # Parse JSON from response
         offers = self._parse_response(content, restaurant_name)
 
-        # Filter offers by user's selected platforms
+        # Filter offers by platform if specified
         if platforms:
             offers = [o for o in offers if o.platform in platforms]
 
@@ -122,6 +123,48 @@ IMPORTANT: Be EXHAUSTIVE. List ALL offers found, not just the best ones. Include
             provider=self.provider_name,
         )
 
+    async def _search_parallel(
+        self,
+        restaurant_name: str,
+        city: str,
+        platforms: List[Platform],
+    ) -> SearchResult:
+        """Search multiple platforms in parallel and merge results."""
+        # Create tasks for each platform
+        tasks = [
+            self._search_single_platform(restaurant_name, city, [platform])
+            for platform in platforms
+        ]
+
+        # Run all searches in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Merge results
+        all_offers = []
+        all_sources = []
+        summaries = []
+
+        for result in results:
+            if isinstance(result, Exception):
+                # Log error but continue with other results
+                continue
+            all_offers.extend(result.offers)
+            all_sources.extend(result.sources)
+            if result.summary:
+                summaries.append(result.summary)
+
+        # Dedupe sources
+        unique_sources = list(set(all_sources))
+
+        return SearchResult(
+            restaurant_name=restaurant_name,
+            city=city,
+            offers=all_offers,
+            summary=" | ".join(summaries) if summaries else None,
+            sources=unique_sources,
+            provider=self.provider_name,
+        )
+
     async def search_restaurant_offers_stream(
         self,
         restaurant_name: str,
@@ -129,22 +172,42 @@ IMPORTANT: Be EXHAUSTIVE. List ALL offers found, not just the best ones. Include
         platforms: Optional[List[Platform]] = None,
     ) -> AsyncIterator[RestaurantOffer]:
         """Stream offers as they are found."""
+        # If multiple platforms, use parallel calls and yield results
+        if platforms and len(platforms) > 1:
+            async for offer in self._stream_parallel(restaurant_name, city, platforms):
+                yield offer
+            return
+
+        # Single platform - use actual streaming
+        async for offer in self._stream_single_platform(restaurant_name, city, platforms):
+            yield offer
+
+    async def _stream_parallel(
+        self,
+        restaurant_name: str,
+        city: str,
+        platforms: List[Platform],
+    ) -> AsyncIterator[RestaurantOffer]:
+        """Make parallel calls for each platform and yield all offers."""
+        # Use the parallel search method
+        result = await self._search_parallel(restaurant_name, city, platforms)
+
+        # Yield offers one by one
+        for offer in result.offers:
+            yield offer
+
+    async def _stream_single_platform(
+        self,
+        restaurant_name: str,
+        city: str,
+        platforms: Optional[List[Platform]] = None,
+    ) -> AsyncIterator[RestaurantOffer]:
+        """Stream offers from a single platform."""
         client = await self._get_client()
 
         prompt = self._build_search_prompt(restaurant_name, city, platforms)
 
-        # Build platform-specific instructions
-        platform_instruction = ""
-        if platforms and len(platforms) > 1:
-            platform_names = [PLATFORM_INFO.get(p, {}).get("display_name", p.value) for p in platforms]
-            platform_instruction = f"""
-CRITICAL REQUIREMENT: You MUST search and return offers from ALL {len(platforms)} platforms: {', '.join(platform_names)}.
-Search each platform SEPARATELY and list ALL offers found. Do NOT summarize or combine offers.
-If a platform has multiple bank offers (HDFC, ICICI, Axis, etc.), list EACH as a separate OFFER line.
-"""
-
-        system_prompt = f"""You are a helpful assistant that finds restaurant dine-in offers.
-{platform_instruction}
+        system_prompt = """You are a helpful assistant that finds restaurant dine-in offers.
 For each offer you find, output it on a separate line in this format:
 OFFER: [Platform] | [Offer Type] | [Discount] | [Bank if any] | [Conditions]
 
@@ -154,17 +217,15 @@ Use EXACTLY these platform names:
 - "EazyDiner" for EazyDiner offers
 - "District" for District offers
 
-Example output with multiple platforms:
+Example:
 OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 500 | HDFC Infinia | Min Rs 3500
 OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 400 | HDFC Diners | Min Rs 3000
-OFFER: Swiggy Dineout | general | Flat Rs 200 off | HDFC Cards | Min Rs 2000
 OFFER: Zomato | walk-in | 15% off on bill | - | Pay via Zomato
-OFFER: EazyDiner | pre-booked | 25% off | - | Book via app
 
 After all offers, add:
 SUMMARY: Brief summary
 
-IMPORTANT: Be EXHAUSTIVE. List EVERY offer from EVERY platform. Do not skip or combine offers."""
+List ALL offers including all bank-specific offers separately."""
 
         payload = {
             "model": self.model,
@@ -206,7 +267,6 @@ IMPORTANT: Be EXHAUSTIVE. List EVERY offer from EVERY platform. Do not skip or c
             if buffer.strip():
                 offer = self._parse_offer_line(buffer)
                 if offer:
-                    # Filter by user's selected platforms
                     if platforms is None or offer.platform in platforms:
                         yield offer
 
