@@ -51,12 +51,23 @@ class PerplexityProvider(LLMSearchProvider):
 
         prompt = self._build_search_prompt(restaurant_name, city, platforms)
 
-        # Add JSON formatting instruction
-        system_prompt = """You are a helpful assistant that finds restaurant dine-in offers.
+        # Build platform-specific instructions
+        platform_count = len(platforms) if platforms else 3
+        platform_instruction = ""
+        if platforms and len(platforms) > 1:
+            platform_names = [PLATFORM_INFO.get(p, {}).get("display_name", p.value) for p in platforms]
+            platform_instruction = f"""
+CRITICAL: You MUST search and return offers from ALL {platform_count} platforms: {', '.join(platform_names)}.
+Do NOT summarize or skip any platform. List EVERY offer you find from EACH platform separately.
+If a platform has multiple offers (e.g., different bank offers), list each one as a separate entry.
+"""
+
+        system_prompt = f"""You are a helpful assistant that finds restaurant dine-in offers.
+{platform_instruction}
 Return your response in the following JSON format:
-{
+{{
     "offers": [
-        {
+        {{
             "platform": "swiggy_dineout|zomato|eazydiner|district",
             "offer_type": "pre-booked|walk-in|bank_offer|coupon|general",
             "discount_text": "Full description of the offer",
@@ -65,10 +76,10 @@ Return your response in the following JSON format:
             "bank_name": "HDFC" or null,
             "conditions": "Valid on weekdays" or null,
             "coupon_code": "CODE123" or null
-        }
+        }}
     ],
     "summary": "Brief summary of best deals available"
-}
+}}
 
 Platform mapping:
 - Swiggy Dineout, Dineout → "swiggy_dineout"
@@ -76,7 +87,7 @@ Platform mapping:
 - EazyDiner → "eazydiner"
 - District → "district"
 
-Only include currently valid offers. Be specific and factual."""
+IMPORTANT: Be EXHAUSTIVE. List ALL offers found, not just the best ones. Include all bank-specific offers separately."""
 
         payload = {
             "model": self.model,
@@ -122,25 +133,38 @@ Only include currently valid offers. Be specific and factual."""
 
         prompt = self._build_search_prompt(restaurant_name, city, platforms)
 
-        system_prompt = """You are a helpful assistant that finds restaurant dine-in offers.
+        # Build platform-specific instructions
+        platform_instruction = ""
+        if platforms and len(platforms) > 1:
+            platform_names = [PLATFORM_INFO.get(p, {}).get("display_name", p.value) for p in platforms]
+            platform_instruction = f"""
+CRITICAL REQUIREMENT: You MUST search and return offers from ALL {len(platforms)} platforms: {', '.join(platform_names)}.
+Search each platform SEPARATELY and list ALL offers found. Do NOT summarize or combine offers.
+If a platform has multiple bank offers (HDFC, ICICI, Axis, etc.), list EACH as a separate OFFER line.
+"""
+
+        system_prompt = f"""You are a helpful assistant that finds restaurant dine-in offers.
+{platform_instruction}
 For each offer you find, output it on a separate line in this format:
 OFFER: [Platform] | [Offer Type] | [Discount] | [Bank if any] | [Conditions]
 
-IMPORTANT - Use EXACTLY these platform names:
+Use EXACTLY these platform names:
 - "Swiggy Dineout" for Swiggy Dineout / Dineout offers
 - "Zomato" for Zomato / Zomato Pay / Zomato Dining / Zomato Gold offers
 - "EazyDiner" for EazyDiner offers
 - "District" for District offers
 
-Example:
-OFFER: Swiggy Dineout | pre-booked | 40% off up to Rs 200 | - | Valid on weekdays
-OFFER: Zomato | bank_offer | 20% off up to Rs 500 | HDFC | Credit cards only
-OFFER: EazyDiner | walk-in | 25% off up to Rs 300 | - | All days
+Example output with multiple platforms:
+OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 500 | HDFC Infinia | Min Rs 3500
+OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 400 | HDFC Diners | Min Rs 3000
+OFFER: Swiggy Dineout | general | Flat Rs 200 off | HDFC Cards | Min Rs 2000
+OFFER: Zomato | walk-in | 15% off on bill | - | Pay via Zomato
+OFFER: EazyDiner | pre-booked | 25% off | - | Book via app
 
-After all offers, add a summary line:
-SUMMARY: Brief summary of best deals
+After all offers, add:
+SUMMARY: Brief summary
 
-Only include currently valid offers."""
+IMPORTANT: Be EXHAUSTIVE. List EVERY offer from EVERY platform. Do not skip or combine offers."""
 
         payload = {
             "model": self.model,
