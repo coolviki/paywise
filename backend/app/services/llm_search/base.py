@@ -11,9 +11,8 @@ from enum import Enum
 class Platform(str, Enum):
     """Supported restaurant/dineout platforms."""
     SWIGGY_DINEOUT = "swiggy_dineout"
-    ZOMATO_PAY = "zomato_pay"
     EAZYDINER = "eazydiner"
-    DISTRICT = "district"  # Future
+    DISTRICT = "district"
     UNKNOWN = "unknown"
 
 
@@ -24,12 +23,6 @@ PLATFORM_INFO = {
         "website": "https://www.swiggy.com/dineout",
         "app_link": "swiggy://dineout",
         "search_url": "https://www.swiggy.com/dineout/search?query={restaurant}",
-    },
-    Platform.ZOMATO_PAY: {
-        "display_name": "Zomato Pay",
-        "website": "https://www.zomato.com",
-        "app_link": "zomato://",
-        "search_url": "https://www.zomato.com/{city}/restaurants?q={restaurant}",
     },
     Platform.EAZYDINER: {
         "display_name": "EazyDiner",
@@ -177,7 +170,7 @@ class LLMSearchProvider(ABC):
         if platforms:
             platform_names = [PLATFORM_INFO.get(p, {}).get("display_name", p.value) for p in platforms]
         else:
-            platform_names = ["Swiggy Dineout", "Zomato Pay", "EazyDiner"]
+            platform_names = ["Swiggy Dineout", "EazyDiner", "District"]
 
         platforms_str = ", ".join(platform_names)
 
@@ -192,7 +185,7 @@ Look for:
 6. **Promo codes** - any active coupon codes
 
 For each offer found, provide:
-- Platform name (Swiggy Dineout / Zomato Pay / EazyDiner)
+- Platform name (Swiggy Dineout / EazyDiner / District)
 - Discount amount (percentage and max cap in ₹)
 - Conditions (minimum order, valid days, card restrictions)
 - Bank name if it's a bank-specific offer

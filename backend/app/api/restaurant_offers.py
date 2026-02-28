@@ -38,7 +38,6 @@ def _get_user_enabled_platforms(db: Session, user_id) -> Optional[list[Platform]
     # Map app codes to Platform enums
     platform_map = {
         "swiggy_dineout": Platform.SWIGGY_DINEOUT,
-        "zomato_pay": Platform.ZOMATO_PAY,
         "eazydiner": Platform.EAZYDINER,
         "district": Platform.DISTRICT,
     }
@@ -131,8 +130,6 @@ def _parse_platforms(platforms: Optional[list[str]]) -> Optional[list[Platform]]
     mapping = {
         "swiggy_dineout": Platform.SWIGGY_DINEOUT,
         "swiggy": Platform.SWIGGY_DINEOUT,
-        "zomato_pay": Platform.ZOMATO_PAY,
-        "zomato": Platform.ZOMATO_PAY,
         "eazydiner": Platform.EAZYDINER,
         "district": Platform.DISTRICT,
     }

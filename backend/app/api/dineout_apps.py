@@ -1,6 +1,6 @@
 """
 Dine-out payment apps API.
-Manages user's selected dine-in payment apps (Swiggy Dineout, Zomato Pay, EazyDiner, District).
+Manages user's selected dine-in payment apps (Swiggy Dineout, EazyDiner, District).
 """
 
 from typing import List
@@ -24,12 +24,6 @@ DINEOUT_APPS = {
         "logo_url": "https://res.cloudinary.com/swiggy/image/upload/fl_lossy,f_auto,q_auto/portal/m/dineout_logo.png",
         "color": "#FC8019",
     },
-    "zomato_pay": {
-        "code": "zomato_pay",
-        "name": "Zomato Pay",
-        "logo_url": "https://b.zmtcdn.com/images/logo/zomato_logo_2017.png",
-        "color": "#E23744",
-    },
     "eazydiner": {
         "code": "eazydiner",
         "name": "EazyDiner",
@@ -39,9 +33,8 @@ DINEOUT_APPS = {
     "district": {
         "code": "district",
         "name": "District",
-        "logo_url": None,
+        "logo_url": "https://www.district.in/images/logo.png",
         "color": "#3B82F6",
-        "coming_soon": True,
     },
 }
 

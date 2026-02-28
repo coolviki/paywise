@@ -17,7 +17,8 @@
       "Bash(git commit:*)",
       "Bash(brew list:*)",
       "Bash(npx @railway/cli:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:www.swiggy.com)"
     ]
   }
 }

@@ -83,7 +83,7 @@ Return JSON in this exact format:
 {{
     "offers": [
         {{
-            "platform": "swiggy_dineout|zomato|eazydiner|district",
+            "platform": "swiggy_dineout|eazydiner|district",
             "offer_type": "pre-booked|walk-in|bank_offer|coupon|general",
             "discount_text": "Full description of the offer",
             "discount_percentage": 40.0,
@@ -98,7 +98,6 @@ Return JSON in this exact format:
 
 Platform mapping:
 - Swiggy Dineout, Dineout → "swiggy_dineout"
-- Zomato, Zomato Pay, Zomato Dining, Zomato Gold → "zomato"
 - EazyDiner → "eazydiner"
 - District → "district"
 
@@ -152,11 +151,10 @@ Only include currently valid offers. Return empty offers array if no valid offer
     ) -> SearchResult:
         """Search for offers on a single platform."""
         # Build search query
-        platform_names = ["Swiggy Dineout", "Zomato Pay", "EazyDiner"]
+        platform_names = ["Swiggy Dineout", "EazyDiner", "District"]
         if platforms:
             platform_map = {
                 Platform.SWIGGY_DINEOUT: "Swiggy Dineout",
-                Platform.ZOMATO_PAY: "Zomato Pay",
                 Platform.EAZYDINER: "EazyDiner",
                 Platform.DISTRICT: "District",
             }
@@ -275,22 +273,15 @@ Only include currently valid offers. Return empty offers array if no valid offer
             "dineout": Platform.SWIGGY_DINEOUT,
             "dine out": Platform.SWIGGY_DINEOUT,
             "dine-out": Platform.SWIGGY_DINEOUT,
-            # Zomato variations
-            "zomato_pay": Platform.ZOMATO_PAY,
-            "zomato pay": Platform.ZOMATO_PAY,
-            "zomato": Platform.ZOMATO_PAY,
-            "zomato_dining": Platform.ZOMATO_PAY,
-            "zomato dining": Platform.ZOMATO_PAY,
-            "zomato gold": Platform.ZOMATO_PAY,
-            "zomato pro": Platform.ZOMATO_PAY,
             # EazyDiner variations
             "eazydiner": Platform.EAZYDINER,
             "eazy diner": Platform.EAZYDINER,
             "eazy_diner": Platform.EAZYDINER,
             "easy diner": Platform.EAZYDINER,
             "easydiner": Platform.EAZYDINER,
-            # District
+            # District variations
             "district": Platform.DISTRICT,
+            "district app": Platform.DISTRICT,
         }
 
         # Try exact match first

@@ -72,7 +72,7 @@ Return your response in the following JSON format:
 {
     "offers": [
         {
-            "platform": "swiggy_dineout|zomato|eazydiner|district",
+            "platform": "swiggy_dineout|eazydiner|district",
             "offer_type": "pre-booked|walk-in|bank_offer|coupon|general",
             "discount_text": "Full description of the offer",
             "discount_percentage": 40.0,
@@ -87,7 +87,6 @@ Return your response in the following JSON format:
 
 Platform mapping:
 - Swiggy Dineout, Dineout → "swiggy_dineout"
-- Zomato, Zomato Pay, Zomato Dining, Zomato Gold → "zomato"
 - EazyDiner → "eazydiner"
 - District → "district"
 
@@ -215,14 +214,14 @@ OFFER: [Platform] | [Offer Type] | [Discount] | [Bank if any] | [Conditions]
 
 Use EXACTLY these platform names:
 - "Swiggy Dineout" for Swiggy Dineout / Dineout offers
-- "Zomato" for Zomato / Zomato Pay / Zomato Dining / Zomato Gold offers
 - "EazyDiner" for EazyDiner offers
 - "District" for District offers
 
 Example:
 OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 500 | HDFC Infinia | Min Rs 3500
 OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 400 | HDFC Diners | Min Rs 3000
-OFFER: Zomato | walk-in | 15% off on bill | - | Pay via Zomato
+OFFER: EazyDiner | walk-in | 25% off on bill | - | Pay via EazyDiner
+OFFER: District | pre-booked | 20% off | - | Book via District app
 
 After all offers, add:
 SUMMARY: Brief summary
@@ -309,7 +308,7 @@ List ALL offers including all bank-specific offers separately."""
         lines = content.split("\n")
 
         for line in lines:
-            if "%" in line and any(p in line.lower() for p in ["swiggy", "zomato", "eazydiner", "dineout"]):
+            if "%" in line and any(p in line.lower() for p in ["swiggy", "eazydiner", "dineout", "district"]):
                 platform = self._detect_platform(line)
                 offer = self._parse_offer_text(line, platform)
                 if offer:
@@ -360,8 +359,6 @@ List ALL offers including all bank-specific offers separately."""
         text_lower = text.lower()
         if "swiggy" in text_lower or "dineout" in text_lower:
             return Platform.SWIGGY_DINEOUT
-        elif "zomato" in text_lower:
-            return Platform.ZOMATO_PAY
         elif "eazydiner" in text_lower or "eazy diner" in text_lower:
             return Platform.EAZYDINER
         elif "district" in text_lower:
@@ -384,22 +381,15 @@ List ALL offers including all bank-specific offers separately."""
             "dineout": Platform.SWIGGY_DINEOUT,
             "dine out": Platform.SWIGGY_DINEOUT,
             "dine-out": Platform.SWIGGY_DINEOUT,
-            # Zomato variations
-            "zomato_pay": Platform.ZOMATO_PAY,
-            "zomato pay": Platform.ZOMATO_PAY,
-            "zomato": Platform.ZOMATO_PAY,
-            "zomato_dining": Platform.ZOMATO_PAY,
-            "zomato dining": Platform.ZOMATO_PAY,
-            "zomato gold": Platform.ZOMATO_PAY,
-            "zomato pro": Platform.ZOMATO_PAY,
             # EazyDiner variations
             "eazydiner": Platform.EAZYDINER,
             "eazy diner": Platform.EAZYDINER,
             "eazy_diner": Platform.EAZYDINER,
             "easy diner": Platform.EAZYDINER,
             "easydiner": Platform.EAZYDINER,
-            # District
+            # District variations
             "district": Platform.DISTRICT,
+            "district app": Platform.DISTRICT,
         }
 
         # Try exact match first
