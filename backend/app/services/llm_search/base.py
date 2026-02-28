@@ -32,9 +32,9 @@ PLATFORM_INFO = {
     },
     Platform.DISTRICT: {
         "display_name": "District",
-        "website": "https://www.district.in",
-        "app_link": "district://",
-        "search_url": "https://www.district.in/search?q={restaurant}",
+        "website": "https://www.district.in/dining/",
+        "app_link": "district://dining",
+        "search_url": "https://www.district.in/dining/{city}?q={restaurant}",
     },
     Platform.UNKNOWN: {
         "display_name": "Unknown",

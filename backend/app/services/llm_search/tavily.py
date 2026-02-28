@@ -49,9 +49,10 @@ class TavilyProvider(LLMSearchProvider):
             "max_results": 10,
             "include_domains": [
                 "swiggy.com",
-                "zomato.com",
                 "eazydiner.com",
                 "dineout.co.in",
+                "district.in",
+                "thedistrict.in",
                 "magicpin.in",
             ],
         }
