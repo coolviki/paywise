@@ -208,12 +208,20 @@ Only include currently valid offers. Return empty offers array if no valid offer
 
     def _map_platform(self, platform_str: str) -> Platform:
         """Map string to Platform enum."""
+        # Normalize: lowercase, remove extra spaces, replace hyphens with spaces
+        normalized = platform_str.lower().strip()
+        normalized = " ".join(normalized.split())  # Collapse multiple spaces
+        normalized_no_hyphen = normalized.replace("-", " ")
+
         mapping = {
             # Swiggy Dineout variations
             "swiggy_dineout": Platform.SWIGGY_DINEOUT,
             "swiggy dineout": Platform.SWIGGY_DINEOUT,
+            "swiggy dine out": Platform.SWIGGY_DINEOUT,
             "swiggy": Platform.SWIGGY_DINEOUT,
             "dineout": Platform.SWIGGY_DINEOUT,
+            "dine out": Platform.SWIGGY_DINEOUT,
+            "dine-out": Platform.SWIGGY_DINEOUT,
             # Zomato variations
             "zomato_pay": Platform.ZOMATO_PAY,
             "zomato pay": Platform.ZOMATO_PAY,
@@ -221,14 +229,27 @@ Only include currently valid offers. Return empty offers array if no valid offer
             "zomato_dining": Platform.ZOMATO_PAY,
             "zomato dining": Platform.ZOMATO_PAY,
             "zomato gold": Platform.ZOMATO_PAY,
+            "zomato pro": Platform.ZOMATO_PAY,
             # EazyDiner variations
             "eazydiner": Platform.EAZYDINER,
             "eazy diner": Platform.EAZYDINER,
             "eazy_diner": Platform.EAZYDINER,
+            "easy diner": Platform.EAZYDINER,
+            "easydiner": Platform.EAZYDINER,
             # District
             "district": Platform.DISTRICT,
         }
-        return mapping.get(platform_str.lower(), Platform.UNKNOWN)
+
+        # Try exact match first
+        if normalized in mapping:
+            return mapping[normalized]
+
+        # Try with hyphens replaced by spaces
+        if normalized_no_hyphen in mapping:
+            return mapping[normalized_no_hyphen]
+
+        # Fallback to unknown
+        return Platform.UNKNOWN
 
     def _get_platform_display_name(self, platform: Platform) -> str:
         """Get display name for platform."""
