@@ -44,6 +44,31 @@ The app fetches real-time dine-in offers from multiple platforms:
 - **EazyDiner** - Table reservations with discounts
 - **District** - Dining offers and bank card deals
 
+### Architecture Decision: Hybrid Approach (LLM + Direct Scraping)
+
+> **Current Strategy (as of March 2026):**
+> - Use **LLM-powered web search** (Perplexity/Tavily) for Swiggy Dineout and EazyDiner
+> - Use **direct HTML scraping** for District.in
+>
+> **Rationale:** District.in pages are poorly indexed by search engines. When querying LLM search providers about District offers, they return no results even when offers clearly exist on the District website. Direct scraping ensures reliable offer retrieval.
+
+#### Decision Matrix
+
+| Platform | Indexing Quality | Method Used | Reliability |
+|----------|------------------|-------------|-------------|
+| Swiggy Dineout | ✅ Well-indexed | LLM Search | High - search engines have current data |
+| EazyDiner | ✅ Well-indexed | LLM Search | High - search engines have current data |
+| District | ❌ Poorly indexed | Direct Scraping | High - fetches directly from source |
+
+#### Future Considerations
+
+When District.in becomes better indexed by search engines (or provides a public API), we can:
+1. Switch to LLM search for consistency
+2. Keep direct scraping as a fallback
+3. Use direct scraping for validation/accuracy checks
+
+For now, the hybrid approach ensures we capture offers from all platforms reliably.
+
 ### Data Flow
 
 ```
@@ -88,6 +113,29 @@ User searches "Wok in the Clouds, Delhi"
 
 **Location:** `backend/app/services/llm_search/district_scraper.py`
 
+**Why Direct Scraping for District?**
+
+District.in is a dining app that isn't well-crawled by search engines. When we query Perplexity or Tavily for "District offers for [restaurant]", they return nothing—even when the restaurant clearly has offers on District's website. This is likely because:
+- District uses client-side rendering (JavaScript)
+- Pages are behind app/login walls for some content
+- Search engine crawlers don't prioritize this domain
+
+**Integration with LLM Providers:**
+
+Both `perplexity.py` and `tavily.py` automatically invoke the District scraper:
+
+```python
+# In perplexity.py and tavily.py:
+if platforms is None or Platform.DISTRICT in platforms:
+    district_offers = await self._get_district_offers(restaurant_name, city)
+    offers.extend(district_offers)
+```
+
+This means:
+- If user selects "All Platforms" → LLM search + District scraper run in parallel
+- If user selects only "District" → Only District scraper runs (no LLM call)
+- If user selects "Swiggy + EazyDiner" → Only LLM search runs (no scraper)
+
 **How it works:**
 1. Maps city names to District's city codes (e.g., "Delhi" → "ncr")
 2. Constructs URL: `district.in/dining/{city}/{restaurant-slug}`
@@ -103,6 +151,17 @@ https://www.district.in/dining/ncr/wok-in-the-clouds-khan-market-new-delhi
                               ▲                    ▲
                            city code          restaurant slug
 ```
+
+**Supported Cities:**
+| User Input | District Code |
+|------------|---------------|
+| Delhi, New Delhi, Gurgaon, Noida | ncr |
+| Mumbai | mumbai |
+| Bangalore, Bengaluru | bangalore |
+| Hyderabad | hyderabad |
+| Chennai | chennai |
+| Pune | pune |
+| Kolkata | kolkata |
 
 ### LLM Search Providers
 
