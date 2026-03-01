@@ -6,10 +6,14 @@ Tavily is a search API optimized for LLMs - we combine it with Gemini for extrac
 import json
 import re
 import asyncio
+import logging
 from typing import List, Optional, AsyncIterator
 import httpx
 
 from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform, PLATFORM_INFO
+from .district_scraper import get_district_scraper
+
+logger = logging.getLogger(__name__)
 
 
 class TavilyProvider(LLMSearchProvider):
@@ -151,45 +155,70 @@ Only include currently valid offers. Return empty offers array if no valid offer
         platforms: Optional[List[Platform]] = None,
     ) -> SearchResult:
         """Search for offers on a single platform."""
-        # Build search query
-        platform_names = ["Swiggy Dineout", "EazyDiner", "District"]
+        offers = []
+        sources = []
+
+        # If searching specifically for District, use direct scraper
+        if platforms and len(platforms) == 1 and platforms[0] == Platform.DISTRICT:
+            logger.info(f"Using District scraper for {restaurant_name} in {city}")
+            district_offers = await self._get_district_offers(restaurant_name, city)
+            return SearchResult(
+                restaurant_name=restaurant_name,
+                city=city,
+                offers=district_offers,
+                summary=f"Found {len(district_offers)} offers on District" if district_offers else None,
+                sources=["district.in"],
+                provider=self.provider_name,
+            )
+
+        # Build search query for other platforms
+        platform_names = ["Swiggy Dineout", "EazyDiner"]
         if platforms:
             platform_map = {
                 Platform.SWIGGY_DINEOUT: "Swiggy Dineout",
                 Platform.EAZYDINER: "EazyDiner",
                 Platform.DISTRICT: "District",
             }
-            platform_names = [platform_map.get(p, p.value) for p in platforms]
+            platform_names = [platform_map.get(p, p.value) for p in platforms if p != Platform.DISTRICT]
 
-        query = f"{restaurant_name} {city} dine-in offers discounts {' '.join(platform_names)} bank card offers 2024"
+        # Only search if we have non-District platforms
+        if platform_names:
+            query = f"{restaurant_name} {city} dine-in offers discounts {' '.join(platform_names)} bank card offers 2024"
 
-        # Search
-        search_results = await self._tavily_search(query)
+            # Search
+            search_results = await self._tavily_search(query)
 
-        # Extract sources
-        sources = [r["url"] for r in search_results.get("results", [])]
+            # Extract sources
+            sources = [r["url"] for r in search_results.get("results", [])]
 
-        # Extract structured offers
-        extracted = await self._gemini_extract(search_results, restaurant_name, city)
+            # Extract structured offers
+            extracted = await self._gemini_extract(search_results, restaurant_name, city)
 
-        # Convert to RestaurantOffer objects
-        offers = []
-        for item in extracted.get("offers", []):
-            platform = self._map_platform(item.get("platform", "unknown"))
-            platform_info = PLATFORM_INFO.get(platform, {})
-            offers.append(RestaurantOffer(
-                platform=platform,
-                platform_display_name=self._get_platform_display_name(platform),
-                offer_type=item.get("offer_type", "general"),
-                discount_text=item.get("discount_text", ""),
-                discount_percentage=item.get("discount_percentage"),
-                max_discount=item.get("max_discount"),
-                bank_name=item.get("bank_name"),
-                conditions=item.get("conditions"),
-                coupon_code=item.get("coupon_code"),
-                app_link=platform_info.get("app_link"),
-                platform_url=platform_info.get("website"),
-            ))
+            # Convert to RestaurantOffer objects
+            for item in extracted.get("offers", []):
+                platform = self._map_platform(item.get("platform", "unknown"))
+                platform_info = PLATFORM_INFO.get(platform, {})
+                offers.append(RestaurantOffer(
+                    platform=platform,
+                    platform_display_name=self._get_platform_display_name(platform),
+                    offer_type=item.get("offer_type", "general"),
+                    discount_text=item.get("discount_text", ""),
+                    discount_percentage=item.get("discount_percentage"),
+                    max_discount=item.get("max_discount"),
+                    bank_name=item.get("bank_name"),
+                    conditions=item.get("conditions"),
+                    coupon_code=item.get("coupon_code"),
+                    app_link=platform_info.get("app_link"),
+                    platform_url=platform_info.get("website"),
+                ))
+
+        # If District is in the platforms list, also fetch from District scraper
+        if platforms is None or Platform.DISTRICT in platforms:
+            logger.info(f"Also fetching District offers for {restaurant_name} in {city}")
+            district_offers = await self._get_district_offers(restaurant_name, city)
+            offers.extend(district_offers)
+            if district_offers:
+                sources.append("district.in")
 
         # Filter offers by user's selected platforms
         if platforms:
@@ -199,10 +228,19 @@ Only include currently valid offers. Return empty offers array if no valid offer
             restaurant_name=restaurant_name,
             city=city,
             offers=offers,
-            summary=extracted.get("summary"),
+            summary=None,
             sources=sources,
             provider=self.provider_name,
         )
+
+    async def _get_district_offers(self, restaurant_name: str, city: str) -> List[RestaurantOffer]:
+        """Get offers from District using direct scraper."""
+        try:
+            scraper = get_district_scraper()
+            return await scraper.get_offers(restaurant_name, city)
+        except Exception as e:
+            logger.error(f"Error fetching District offers: {e}")
+            return []
 
     async def _search_parallel(
         self,

@@ -6,10 +6,14 @@ Uses Perplexity's sonar model which has built-in web search.
 import json
 import re
 import asyncio
+import logging
 from typing import List, Optional, AsyncIterator
 import httpx
 
 from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform, PLATFORM_INFO
+from .district_scraper import get_district_scraper
+
+logger = logging.getLogger(__name__)
 
 
 class PerplexityProvider(LLMSearchProvider):
@@ -63,11 +67,34 @@ class PerplexityProvider(LLMSearchProvider):
         platforms: Optional[List[Platform]] = None,
     ) -> SearchResult:
         """Search for offers on a single platform."""
+        offers = []
+        sources = []
+
+        # If searching specifically for District, use direct scraper
+        if platforms and len(platforms) == 1 and platforms[0] == Platform.DISTRICT:
+            logger.info(f"Using District scraper for {restaurant_name} in {city}")
+            district_offers = await self._get_district_offers(restaurant_name, city)
+            return SearchResult(
+                restaurant_name=restaurant_name,
+                city=city,
+                offers=district_offers,
+                summary=f"Found {len(district_offers)} offers on District" if district_offers else None,
+                sources=["district.in"],
+                provider=self.provider_name,
+            )
+
+        # Use Perplexity for non-District platforms
         client = await self._get_client()
 
-        prompt = self._build_search_prompt(restaurant_name, city, platforms)
+        # Build prompt excluding District (we'll fetch that separately)
+        non_district_platforms = None
+        if platforms:
+            non_district_platforms = [p for p in platforms if p != Platform.DISTRICT]
 
-        system_prompt = """You are a helpful assistant that finds restaurant dine-in offers.
+        if non_district_platforms or platforms is None:
+            prompt = self._build_search_prompt(restaurant_name, city, non_district_platforms if non_district_platforms else None)
+
+            system_prompt = """You are a helpful assistant that finds restaurant dine-in offers.
 Return your response in the following JSON format:
 {
     "offers": [
@@ -92,36 +119,58 @@ Platform mapping:
 
 IMPORTANT: List ALL offers found, including all bank-specific offers separately."""
 
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            "return_citations": True,
-        }
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                "return_citations": True,
+            }
 
-        response = await client.post("/chat/completions", json=payload)
-        response.raise_for_status()
-        data = response.json()
+            response = await client.post("/chat/completions", json=payload)
+            response.raise_for_status()
+            data = response.json()
 
-        content = data["choices"][0]["message"]["content"]
-        citations = data.get("citations", [])
+            content = data["choices"][0]["message"]["content"]
+            sources = data.get("citations", [])
 
-        offers = self._parse_response(content, restaurant_name)
+            offers = self._parse_response(content, restaurant_name)
+
+        # If District is in the platforms list (or no filter), also fetch from District scraper
+        if platforms is None or Platform.DISTRICT in platforms:
+            logger.info(f"Also fetching District offers for {restaurant_name} in {city}")
+            district_offers = await self._get_district_offers(restaurant_name, city)
+            offers.extend(district_offers)
+            if district_offers:
+                sources.append("district.in")
 
         # Filter offers by platform if specified
         if platforms:
             offers = [o for o in offers if o.platform in platforms]
 
+        # Build summary
+        summary = None
+        if 'content' in locals() and content:
+            summary = self._extract_summary(content)
+
         return SearchResult(
             restaurant_name=restaurant_name,
             city=city,
             offers=offers,
-            summary=self._extract_summary(content),
-            sources=citations,
+            summary=summary,
+            sources=sources,
             provider=self.provider_name,
         )
+
+    async def _get_district_offers(self, restaurant_name: str, city: str) -> List[RestaurantOffer]:
+        """Get offers from District using direct scraper."""
+        try:
+            scraper = get_district_scraper()
+            return await scraper.get_offers(restaurant_name, city)
+        except Exception as e:
+            logger.error(f"Error fetching District offers: {e}")
+            return []
 
     async def _search_parallel(
         self,
