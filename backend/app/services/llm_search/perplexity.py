@@ -177,7 +177,8 @@ IMPORTANT: List ALL offers found, including all bank-specific offers separately.
         logger.info(f"[PERPLEXITY] Restaurant: {restaurant_name}, City: {city}")
         logger.info(f"[PERPLEXITY] Total offers: {len(offers)}")
         for i, offer in enumerate(offers):
-            logger.info(f"[PERPLEXITY]   #{i+1}: {offer.platform.value} - {offer.offer_type} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
+            platform_name = offer.platform.value if hasattr(offer.platform, 'value') else str(offer.platform)
+            logger.info(f"[PERPLEXITY]   #{i+1}: {platform_name} - {offer.offer_type} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
         logger.info(f"[PERPLEXITY] Sources: {sources}")
         logger.info(f"[PERPLEXITY] ===================================")
 

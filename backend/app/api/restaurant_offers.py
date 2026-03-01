@@ -289,7 +289,8 @@ async def stream_restaurant_offers(
                 parallel=parallel,
             ):
                 offers_count += 1
-                logger.info(f"[STREAM:{request_id}] Offer #{offers_count}: {offer.platform.value} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
+                platform_name = offer.platform.value if hasattr(offer.platform, 'value') else str(offer.platform)
+                logger.info(f"[STREAM:{request_id}] Offer #{offers_count}: {platform_name} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
                 # Send each offer as a message event
                 offer_data = offer.model_dump()
                 yield f"data: {json.dumps(offer_data)}\n\n"
@@ -311,7 +312,8 @@ async def stream_restaurant_offers(
                 logger.info(f"[STREAM:{request_id}] Batch search returned {len(result.offers)} offers")
                 for offer in result.offers:
                     offers_count += 1
-                    logger.info(f"[STREAM:{request_id}] Batch offer #{offers_count}: {offer.platform.value} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
+                    platform_name = offer.platform.value if hasattr(offer.platform, 'value') else str(offer.platform)
+                    logger.info(f"[STREAM:{request_id}] Batch offer #{offers_count}: {platform_name} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
                     offer_data = offer.model_dump()
                     yield f"data: {json.dumps(offer_data)}\n\n"
                     await asyncio.sleep(0.1)
