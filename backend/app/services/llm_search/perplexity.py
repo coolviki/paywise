@@ -70,10 +70,13 @@ class PerplexityProvider(LLMSearchProvider):
         offers = []
         sources = []
 
+        logger.info(f"[PERPLEXITY] _search_single_platform: restaurant='{restaurant_name}', city='{city}', platforms={[p.value for p in platforms] if platforms else 'all'}")
+
         # If searching specifically for District, use direct scraper
         if platforms and len(platforms) == 1 and platforms[0] == Platform.DISTRICT:
-            logger.info(f"Using District scraper for {restaurant_name} in {city}")
+            logger.info(f"[PERPLEXITY] Using District scraper (only District requested)")
             district_offers = await self._get_district_offers(restaurant_name, city)
+            logger.info(f"[PERPLEXITY] District scraper returned {len(district_offers)} offers")
             return SearchResult(
                 restaurant_name=restaurant_name,
                 city=city,
@@ -128,31 +131,55 @@ IMPORTANT: List ALL offers found, including all bank-specific offers separately.
                 "return_citations": True,
             }
 
-            response = await client.post("/chat/completions", json=payload)
-            response.raise_for_status()
-            data = response.json()
+            logger.info(f"[PERPLEXITY] Calling API with model={self.model}")
+            logger.info(f"[PERPLEXITY] User prompt: {prompt[:200]}...")
+
+            try:
+                response = await client.post("/chat/completions", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                logger.info(f"[PERPLEXITY] API response status: {response.status_code}")
+            except Exception as api_error:
+                logger.error(f"[PERPLEXITY] API call failed: {str(api_error)}")
+                raise
 
             content = data["choices"][0]["message"]["content"]
             sources = data.get("citations", [])
 
+            logger.info(f"[PERPLEXITY] Response content length: {len(content)} chars")
+            logger.info(f"[PERPLEXITY] Response content preview: {content[:500]}...")
+            logger.info(f"[PERPLEXITY] Citations: {sources}")
+
             offers = self._parse_response(content, restaurant_name)
+            logger.info(f"[PERPLEXITY] Parsed {len(offers)} offers from response")
 
         # If District is in the platforms list (or no filter), also fetch from District scraper
         if platforms is None or Platform.DISTRICT in platforms:
-            logger.info(f"Also fetching District offers for {restaurant_name} in {city}")
+            logger.info(f"[PERPLEXITY] Also fetching District offers for {restaurant_name} in {city}")
             district_offers = await self._get_district_offers(restaurant_name, city)
+            logger.info(f"[PERPLEXITY] District scraper returned {len(district_offers)} offers")
             offers.extend(district_offers)
             if district_offers:
                 sources.append("district.in")
 
         # Filter offers by platform if specified
+        pre_filter_count = len(offers)
         if platforms:
             offers = [o for o in offers if o.platform in platforms]
+            logger.info(f"[PERPLEXITY] Filtered offers: {pre_filter_count} -> {len(offers)} (platforms: {[p.value for p in platforms]})")
 
         # Build summary
         summary = None
         if 'content' in locals() and content:
             summary = self._extract_summary(content)
+
+        logger.info(f"[PERPLEXITY] ========== FINAL RESULT ==========")
+        logger.info(f"[PERPLEXITY] Restaurant: {restaurant_name}, City: {city}")
+        logger.info(f"[PERPLEXITY] Total offers: {len(offers)}")
+        for i, offer in enumerate(offers):
+            logger.info(f"[PERPLEXITY]   #{i+1}: {offer.platform.value} - {offer.offer_type} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
+        logger.info(f"[PERPLEXITY] Sources: {sources}")
+        logger.info(f"[PERPLEXITY] ===================================")
 
         return SearchResult(
             restaurant_name=restaurant_name,

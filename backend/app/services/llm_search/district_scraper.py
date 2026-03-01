@@ -125,11 +125,13 @@ class DistrictScraper:
         """
         Get all offers for a restaurant from District.
         """
+        logger.info(f"[DISTRICT] get_offers called: restaurant='{restaurant_name}', city='{city}'")
         offers = []
         client = await self._get_client()
 
         # First, find the restaurant page
         restaurant_url = await self.search_restaurant(restaurant_name, city)
+        logger.info(f"[DISTRICT] Restaurant URL found: {restaurant_url}")
 
         if not restaurant_url:
             # Try direct URL construction with variations
@@ -159,20 +161,26 @@ class DistrictScraper:
                     continue
 
         if not restaurant_url:
-            logger.info(f"Could not find {restaurant_name} on District")
+            logger.info(f"[DISTRICT] Could not find {restaurant_name} on District - returning empty offers")
             return offers
 
         # Fetch the restaurant page
         try:
+            logger.info(f"[DISTRICT] Fetching page: {restaurant_url}")
             response = await client.get(restaurant_url)
+            logger.info(f"[DISTRICT] Response status: {response.status_code}, content length: {len(response.text)} chars")
+
             if response.status_code != 200:
-                logger.warning(f"Failed to fetch District page: {response.status_code}")
+                logger.warning(f"[DISTRICT] Failed to fetch District page: {response.status_code}")
                 return offers
 
             offers = self._parse_offers(response.text, restaurant_url)
+            logger.info(f"[DISTRICT] Parsed {len(offers)} offers from page")
+            for i, offer in enumerate(offers):
+                logger.info(f"[DISTRICT]   #{i+1}: {offer.offer_type} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
 
         except Exception as e:
-            logger.error(f"Error fetching District offers: {e}")
+            logger.error(f"[DISTRICT] Error fetching District offers: {e}", exc_info=True)
 
         return offers
 

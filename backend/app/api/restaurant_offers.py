@@ -5,8 +5,9 @@ Fetches real-time dine-in offers from Swiggy Dineout, Zomato, EazyDiner, etc.
 
 import json
 import asyncio
+import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, HTTPException, Header
+from fastapi import APIRouter, Depends, Query, HTTPException, Header, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -19,9 +20,15 @@ from ..models.card import PaymentMethod
 from ..services.llm_search import get_llm_search_provider, RestaurantOffer, LLMSearchProvider
 from ..services.llm_search.base import Platform, SearchResult
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 def _get_user_enabled_platforms(db: Session, user_id) -> Optional[list[Platform]]:
     """Get user's enabled dine-out app platforms. Returns None if user hasn't set any (show all)."""
+    logger.info(f"[PLATFORMS] Fetching enabled platforms for user_id={user_id}")
+
     enabled_apps = (
         db.query(PaymentMethod)
         .filter(
@@ -32,7 +39,12 @@ def _get_user_enabled_platforms(db: Session, user_id) -> Optional[list[Platform]
         .all()
     )
 
+    logger.info(f"[PLATFORMS] Found {len(enabled_apps)} enabled dine-out apps for user_id={user_id}")
+    for app in enabled_apps:
+        logger.info(f"[PLATFORMS]   - {app.nickname} (active={app.is_active})")
+
     if not enabled_apps:
+        logger.info(f"[PLATFORMS] No apps selected for user_id={user_id}, will show all platforms")
         return None  # No apps selected, show all platforms
 
     # Map app codes to Platform enums
@@ -46,7 +58,10 @@ def _get_user_enabled_platforms(db: Session, user_id) -> Optional[list[Platform]
     for pm in enabled_apps:
         if pm.nickname in platform_map:
             platforms.append(platform_map[pm.nickname])
+        else:
+            logger.warning(f"[PLATFORMS] Unknown platform nickname: {pm.nickname}")
 
+    logger.info(f"[PLATFORMS] Resolved platforms for user_id={user_id}: {[p.value for p in platforms]}")
     return platforms if platforms else None
 
 router = APIRouter()
@@ -184,6 +199,7 @@ async def get_restaurant_offers(
 
 @router.get("/stream")
 async def stream_restaurant_offers(
+    request: Request,
     restaurant_name: str = Query(..., description="Restaurant name"),
     city: str = Query(..., description="City name"),
     platforms: Optional[str] = Query(None, description="Comma-separated platforms (overrides user settings)"),
@@ -211,38 +227,61 @@ async def stream_restaurant_offers(
     es.addEventListener('done', (e) => { es.close(); });
     ```
     """
+    # Log request details
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "unknown")
+
+    logger.info(f"[STREAM] ========== NEW REQUEST ==========")
+    logger.info(f"[STREAM] Client IP: {client_ip}")
+    logger.info(f"[STREAM] User-Agent: {user_agent[:100]}")
+    logger.info(f"[STREAM] Restaurant: '{restaurant_name}', City: '{city}'")
+    logger.info(f"[STREAM] Platforms param: {platforms}")
+    logger.info(f"[STREAM] Parallel mode: {parallel}")
+
     # Auth check (SSE requires token via query param since EventSource doesn't support headers)
     if not user:
+        logger.warning(f"[STREAM] Auth failed - no valid user token")
         raise HTTPException(
             status_code=401,
             detail="Authentication required. Pass token as query parameter.",
         )
 
+    logger.info(f"[STREAM] User: {user.email} (id={user.id})")
+
     provider = _get_provider()
     if not provider:
+        logger.error(f"[STREAM] LLM provider not configured!")
         raise HTTPException(
             status_code=503,
             detail="Restaurant offers service not configured",
         )
 
+    logger.info(f"[STREAM] Using provider: {provider.provider_name}")
+
     # Use platforms from query param, or fall back to user's enabled apps
     if platforms:
         platform_list = platforms.split(",")
         parsed_platforms = _parse_platforms(platform_list)
+        logger.info(f"[STREAM] Using platforms from query param: {[p.value for p in parsed_platforms] if parsed_platforms else 'all'}")
     else:
         # Get user's enabled dine-out apps
         parsed_platforms = _get_user_enabled_platforms(db, user.id)
+        logger.info(f"[STREAM] Using user's enabled platforms: {[p.value for p in parsed_platforms] if parsed_platforms else 'all (none configured)'}")
 
     async def event_generator():
         """Generate SSE events for each offer."""
         offers_count = 0
         summary = None
+        request_id = f"{user.id}:{restaurant_name}:{city}"
 
         try:
+            logger.info(f"[STREAM:{request_id}] Starting event generator")
+
             # First, send a "start" event
             yield f"event: start\ndata: {json.dumps({'restaurant_name': restaurant_name, 'city': city})}\n\n"
 
             # Stream offers
+            logger.info(f"[STREAM:{request_id}] Calling search_restaurant_offers_stream...")
             async for offer in provider.search_restaurant_offers_stream(
                 restaurant_name=restaurant_name,
                 city=city,
@@ -250,6 +289,7 @@ async def stream_restaurant_offers(
                 parallel=parallel,
             ):
                 offers_count += 1
+                logger.info(f"[STREAM:{request_id}] Offer #{offers_count}: {offer.platform.value} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
                 # Send each offer as a message event
                 offer_data = offer.model_dump()
                 yield f"data: {json.dumps(offer_data)}\n\n"
@@ -257,16 +297,21 @@ async def stream_restaurant_offers(
                 # Small delay for better UX (feels more real-time)
                 await asyncio.sleep(0.1)
 
+            logger.info(f"[STREAM:{request_id}] Stream completed with {offers_count} offers")
+
             # If streaming didn't work well, fall back to batch
             if offers_count == 0:
+                logger.info(f"[STREAM:{request_id}] No streaming offers, falling back to batch search...")
                 result = await provider.search_restaurant_offers(
                     restaurant_name=restaurant_name,
                     city=city,
                     platforms=parsed_platforms,
                     parallel=parallel,
                 )
+                logger.info(f"[STREAM:{request_id}] Batch search returned {len(result.offers)} offers")
                 for offer in result.offers:
                     offers_count += 1
+                    logger.info(f"[STREAM:{request_id}] Batch offer #{offers_count}: {offer.platform.value} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
                     offer_data = offer.model_dump()
                     yield f"data: {json.dumps(offer_data)}\n\n"
                     await asyncio.sleep(0.1)
@@ -277,9 +322,11 @@ async def stream_restaurant_offers(
                 "summary": summary,
                 "total_offers": offers_count,
             }
+            logger.info(f"[STREAM:{request_id}] ========== COMPLETE: {offers_count} offers ==========")
             yield f"event: done\ndata: {json.dumps(done_data)}\n\n"
 
         except Exception as e:
+            logger.error(f"[STREAM:{request_id}] ERROR: {str(e)}", exc_info=True)
             # Send error event
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
