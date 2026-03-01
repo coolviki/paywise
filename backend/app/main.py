@@ -23,6 +23,7 @@ app.add_middleware(
         "http://localhost:5173",
         "https://blissful-charisma-production.up.railway.app",
         "https://paywise-production-35a1.up.railway.app",
+        "https://paywise.vikramkumar.org",
     ],
     allow_credentials=True,
     allow_methods=["*"],
