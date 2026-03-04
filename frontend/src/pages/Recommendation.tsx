@@ -147,7 +147,18 @@ export function Recommendation() {
             )}
             */}
 
-            {/* Alternatives */}
+            {/* Restaurant Offers (for dining places only) - Shown before Other Options */}
+            {isDiningPlace && placeName && (
+              <div className="mt-4 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                <RestaurantOffers
+                  restaurantName={placeName}
+                  city={city}
+                  autoFetch={true}
+                />
+              </div>
+            )}
+
+            {/* Alternatives - Now shown after Dine-in Offers */}
             {Array.isArray(recommendation.alternatives) && recommendation.alternatives.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -159,17 +170,6 @@ export function Recommendation() {
                     recommendation={alt}
                   />
                 ))}
-              </div>
-            )}
-
-            {/* Restaurant Offers (for dining places only) */}
-            {isDiningPlace && placeName && (
-              <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-                <RestaurantOffers
-                  restaurantName={placeName}
-                  city={city}
-                  autoFetch={true}
-                />
               </div>
             )}
           </>
