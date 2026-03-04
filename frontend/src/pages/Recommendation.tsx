@@ -43,6 +43,31 @@ const DINEOUT_CATEGORIES = [
   'Costa',
 ];
 
+// Food delivery aggregators - these don't need dine-in offers
+// as they are platforms, not physical restaurants
+const FOOD_AGGREGATORS = [
+  'zomato',
+  'swiggy',
+  'uber eats',
+  'ubereats',
+  'foodpanda',
+  'dunzo',
+  'zepto',
+  'blinkit',
+  'instamart',
+  'bigbasket',
+  'grofers',
+  'jiomart',
+  'amazon fresh',
+  'eatclub',
+  'box8',
+  'faasos',
+  'behrouz',
+  'oven story',
+  'licious',
+  'freshmenu',
+];
+
 export function Recommendation() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -61,10 +86,14 @@ export function Recommendation() {
     }
   }, [placeName, placeCategory, placeAddress, placeId, getRecommendation]);
 
-  // Determine if this is a restaurant/dining place
+  // Determine if this is a restaurant/dining place (but not an aggregator)
   const isDiningPlace = useMemo(() => {
     const category = recommendation?.place_category || placeCategory || '';
     const name = placeName.toLowerCase();
+
+    // First, check if this is a food aggregator platform - these don't need dine-in offers
+    const isAggregator = FOOD_AGGREGATORS.some((agg) => name.includes(agg));
+    if (isAggregator) return false;
 
     // Check category
     const categoryMatch = DINEOUT_CATEGORIES.some((c) =>
