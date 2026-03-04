@@ -141,10 +141,11 @@ export function Recommendation() {
               isBest
             />
 
-            {/* AI Insight */}
+            {/* AI Insight - Hidden for now
             {recommendation.ai_insight && (
               <AIInsight insight={recommendation.ai_insight} />
             )}
+            */}
 
             {/* Alternatives */}
             {Array.isArray(recommendation.alternatives) && recommendation.alternatives.length > 0 && (
