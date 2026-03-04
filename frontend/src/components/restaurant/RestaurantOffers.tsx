@@ -109,7 +109,7 @@ export function RestaurantOffers({
       */}
 
       {/* Loading state with animated illustration */}
-      {isLoading && offers.length === 0 && (
+      {(isLoading || isStreaming) && offers.length === 0 && (
         <div className="flex flex-col items-center justify-center py-8">
           {/* Animated food/dining illustration */}
           <div className="relative w-24 h-24 mb-4">
