@@ -207,21 +207,105 @@ export function ScraperTab() {
             onClick={() => handleRunScraper('hdfc')}
             disabled={status?.is_running || runningBank !== null}
           >
-            {runningBank === 'hdfc' ? 'Starting...' : 'HDFC Only'}
+            {runningBank === 'hdfc' ? 'Starting...' : 'HDFC'}
           </Button>
           <Button
             variant="outline"
             onClick={() => handleRunScraper('icici')}
             disabled={status?.is_running || runningBank !== null}
           >
-            {runningBank === 'icici' ? 'Starting...' : 'ICICI Only'}
+            {runningBank === 'icici' ? 'Starting...' : 'ICICI'}
           </Button>
           <Button
             variant="outline"
             onClick={() => handleRunScraper('sbi')}
             disabled={status?.is_running || runningBank !== null}
           >
-            {runningBank === 'sbi' ? 'Starting...' : 'SBI Only'}
+            {runningBank === 'sbi' ? 'Starting...' : 'SBI'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('axis')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'axis' ? 'Starting...' : 'Axis'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('kotak')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'kotak' ? 'Starting...' : 'Kotak'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('idfc')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'idfc' ? 'Starting...' : 'IDFC'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('amex')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'amex' ? 'Starting...' : 'Amex'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('rbl')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'rbl' ? 'Starting...' : 'RBL'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('indusind')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'indusind' ? 'Starting...' : 'IndusInd'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('yes')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'yes' ? 'Starting...' : 'Yes Bank'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('au')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'au' ? 'Starting...' : 'AU Bank'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('federal')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'federal' ? 'Starting...' : 'Federal'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('bob')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'bob' ? 'Starting...' : 'BOB'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('sc')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'sc' ? 'Starting...' : 'StanChart'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleRunScraper('hsbc')}
+            disabled={status?.is_running || runningBank !== null}
+          >
+            {runningBank === 'hsbc' ? 'Starting...' : 'HSBC'}
           </Button>
           <Button
             variant="ghost"
@@ -234,24 +318,96 @@ export function ScraperTab() {
       </Card>
 
       {/* Bank Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         <BankCard
           name="HDFC Bank"
           logo="https://upload.wikimedia.org/wikipedia/commons/2/28/HDFC_Bank_Logo.svg"
-          description="Infinia, Regalia, Diners Club, Tata Neu, Swiggy cards"
-          cardsTracked={12}
+          description="Infinia, Regalia, Diners Club, Tata Neu, Swiggy"
+          cardsTracked={18}
         />
         <BankCard
           name="ICICI Bank"
           logo="https://upload.wikimedia.org/wikipedia/commons/1/12/ICICI_Bank_Logo.svg"
-          description="Amazon Pay, Emeralde, Sapphiro, MakeMyTrip cards"
-          cardsTracked={8}
+          description="Amazon Pay, Emeralde, Sapphiro, MakeMyTrip"
+          cardsTracked={12}
         />
         <BankCard
           name="SBI Card"
           logo="https://upload.wikimedia.org/wikipedia/commons/c/cc/SBI_Card_Logo.svg"
-          description="SimplyCLICK, Ola Money, BPCL, IRCTC, Air India cards"
-          cardsTracked={11}
+          description="ELITE, SimplyCLICK, Ola Money, BPCL"
+          cardsTracked={15}
+        />
+        <BankCard
+          name="Axis Bank"
+          logo="https://upload.wikimedia.org/wikipedia/commons/1/1a/Axis_Bank_logo.svg"
+          description="Magnus, Flipkart, Ace, Airtel, Vistara"
+          cardsTracked={13}
+        />
+        <BankCard
+          name="Kotak Mahindra"
+          logo="https://upload.wikimedia.org/wikipedia/commons/5/5a/Kotak_Mahindra_Bank_logo.svg"
+          description="Privy League, White Reserve, PVR, IndiGo"
+          cardsTracked={9}
+        />
+        <BankCard
+          name="IDFC First"
+          logo="https://upload.wikimedia.org/wikipedia/commons/a/a1/IDFC_First_Bank_logo.svg"
+          description="FIRST Wealth, Select, WOW, SWYP"
+          cardsTracked={8}
+        />
+        <BankCard
+          name="American Express"
+          logo="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg"
+          description="Platinum, Gold, SmartEarn, Membership Rewards"
+          cardsTracked={7}
+        />
+        <BankCard
+          name="RBL Bank"
+          logo="https://upload.wikimedia.org/wikipedia/commons/5/5a/RBL_Bank_Logo.svg"
+          description="World Safari, Zomato Edition, ShopRite, Popcorn"
+          cardsTracked={9}
+        />
+        <BankCard
+          name="IndusInd Bank"
+          logo="https://upload.wikimedia.org/wikipedia/commons/5/5b/IndusInd_Bank_logo.svg"
+          description="Pioneer Heritage, Legend, InterMiles, British Airways"
+          cardsTracked={9}
+        />
+        <BankCard
+          name="Yes Bank"
+          logo="https://upload.wikimedia.org/wikipedia/commons/8/8f/Yes_Bank_Logo.svg"
+          description="YES FIRST Exclusive, Preferred, PREMIA, Marquee"
+          cardsTracked={6}
+        />
+        <BankCard
+          name="AU Small Finance"
+          logo="https://upload.wikimedia.org/wikipedia/commons/0/0a/AU_Small_Finance_Bank_logo.svg"
+          description="LIT, Altura, Vetta, Zenith (customizable rewards)"
+          cardsTracked={6}
+        />
+        <BankCard
+          name="Federal Bank"
+          logo="https://upload.wikimedia.org/wikipedia/commons/7/7e/Federal_Bank_logo.svg"
+          description="Celesta, Imperio, Signet, Aster"
+          cardsTracked={5}
+        />
+        <BankCard
+          name="Bank of Baroda"
+          logo="https://upload.wikimedia.org/wikipedia/commons/0/0b/Bank_of_Baroda_logo.svg"
+          description="Eterna, Premier, Prime, Select"
+          cardsTracked={5}
+        />
+        <BankCard
+          name="Standard Chartered"
+          logo="https://upload.wikimedia.org/wikipedia/commons/a/ab/Standard_Chartered.svg"
+          description="Ultimate, DigiSmart, EaseMyTrip, Platinum"
+          cardsTracked={5}
+        />
+        <BankCard
+          name="HSBC"
+          logo="https://upload.wikimedia.org/wikipedia/commons/a/aa/HSBC_logo.svg"
+          description="Cashback, Smart Value, TravelOne, Live+"
+          cardsTracked={6}
         />
       </div>
 

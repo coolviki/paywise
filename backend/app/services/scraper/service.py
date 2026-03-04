@@ -14,6 +14,18 @@ from .base import ScrapedBenefit, ScrapedCampaign
 from .hdfc import HDFCScraper
 from .icici import ICICIScraper
 from .sbi import SBIScraper
+from .axis import AxisScraper
+from .kotak import KotakScraper
+from .idfc import IDFCScraper
+from .amex import AmexScraper
+from .rbl import RBLScraper
+from .indusind import IndusIndScraper
+from .yes import YesScraper
+from .au import AUScraper
+from .federal import FederalScraper
+from .bob import BOBScraper
+from .sc import SCScraper
+from .hsbc import HSBCScraper
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +73,18 @@ class ScraperService:
         "hdfc": HDFCScraper,
         "icici": ICICIScraper,
         "sbi": SBIScraper,
+        "axis": AxisScraper,
+        "kotak": KotakScraper,
+        "idfc": IDFCScraper,
+        "amex": AmexScraper,
+        "rbl": RBLScraper,
+        "indusind": IndusIndScraper,
+        "yes": YesScraper,
+        "au": AUScraper,
+        "federal": FederalScraper,
+        "bob": BOBScraper,
+        "sc": SCScraper,
+        "hsbc": HSBCScraper,
     }
 
     def __init__(self, db: Session):
