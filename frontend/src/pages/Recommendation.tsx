@@ -104,16 +104,26 @@ export function Recommendation() {
         <div className="flex items-center gap-3 p-4">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg self-start mt-1"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               {recommendation?.place_name || placeName || 'Loading...'}
             </h1>
             {(recommendation?.place_category || placeCategory) && (
               <p className="text-sm text-gray-500">{recommendation?.place_category || placeCategory}</p>
+            )}
+            {/* Address - show first 3 lines */}
+            {placeAddress && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-y-0.5">
+                {placeAddress.split(',').slice(0, 3).map((part, index) => (
+                  <p key={index} className="truncate">
+                    {part.trim()}
+                  </p>
+                ))}
+              </div>
             )}
           </div>
         </div>
