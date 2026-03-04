@@ -75,7 +75,8 @@ export function RestaurantOffers({
         )}
       </div>
 
-      {/* Search Mode Toggle */}
+      {/* Search Mode Toggle - Hidden, defaulting to Thorough (parallel) mode */}
+      {/* Uncomment to re-enable:
       <div className="flex items-center gap-4 text-xs">
         <span className="text-gray-500 dark:text-gray-400">Search mode:</span>
         <label className="flex items-center gap-1.5 cursor-pointer">
@@ -105,6 +106,7 @@ export function RestaurantOffers({
           </span>
         </label>
       </div>
+      */}
 
       {/* Loading state */}
       {isLoading && offers.length === 0 && (
