@@ -24,6 +24,7 @@ app.add_middleware(
         "https://blissful-charisma-production.up.railway.app",
         "https://paywise-production-35a1.up.railway.app",
         "https://paywise.vikramkumar.org",
+        "https://paywise-beta.vikramkumar.org",
     ],
     allow_credentials=True,
     allow_methods=["*"],
