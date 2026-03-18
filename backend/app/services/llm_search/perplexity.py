@@ -281,9 +281,23 @@ IMPORTANT: List ALL offers found, including all bank-specific offers separately.
         platforms: Optional[List[Platform]] = None,
     ) -> AsyncIterator[RestaurantOffer]:
         """Stream offers from a single platform."""
+
+        # If searching specifically for District, use direct scraper only
+        if platforms and len(platforms) == 1 and platforms[0] == Platform.DISTRICT:
+            logger.info(f"[PERPLEXITY] Streaming District only - using scraper")
+            district_offers = await self._get_district_offers(restaurant_name, city)
+            for offer in district_offers:
+                yield offer
+            return
+
         client = await self._get_client()
 
-        prompt = self._build_search_prompt(restaurant_name, city, platforms)
+        # Build prompt excluding District (we'll fetch that separately)
+        non_district_platforms = None
+        if platforms:
+            non_district_platforms = [p for p in platforms if p != Platform.DISTRICT]
+
+        prompt = self._build_search_prompt(restaurant_name, city, non_district_platforms if non_district_platforms else None)
 
         system_prompt = """You are a helpful assistant that finds restaurant dine-in offers.
 For each offer you find, output it on a separate line in this format:
@@ -347,6 +361,14 @@ List ALL offers including all bank-specific offers separately."""
                 if offer:
                     if platforms is None or offer.platform in platforms:
                         yield offer
+
+        # Also fetch District offers if included in platforms (or all platforms)
+        if platforms is None or Platform.DISTRICT in platforms:
+            logger.info(f"[PERPLEXITY] Streaming: Also fetching District offers for {restaurant_name} in {city}")
+            district_offers = await self._get_district_offers(restaurant_name, city)
+            logger.info(f"[PERPLEXITY] Streaming: District scraper returned {len(district_offers)} offers")
+            for offer in district_offers:
+                yield offer
 
     def _parse_response(self, content: str, restaurant_name: str) -> List[RestaurantOffer]:
         """Parse JSON response into RestaurantOffer objects."""
