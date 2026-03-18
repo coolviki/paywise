@@ -234,13 +234,106 @@ Only include currently valid offers. Return empty offers array if no valid offer
         )
 
     async def _get_district_offers(self, restaurant_name: str, city: str) -> List[RestaurantOffer]:
-        """Get offers from District using direct scraper."""
+        """Get offers from District using a dedicated Tavily + Gemini search."""
         try:
-            scraper = get_district_scraper()
-            return await scraper.get_offers(restaurant_name, city)
+            # Search specifically for District offers
+            query = f'"{restaurant_name}" {city} District app dining offers discounts bank card deals 2026'
+
+            logger.info(f"[DISTRICT-TAVILY] Searching: {query}")
+
+            search_results = await self._tavily_search(query)
+
+            # Build context from search results
+            context_parts = []
+            if search_results.get("answer"):
+                context_parts.append(f"Summary: {search_results['answer']}")
+
+            for result in search_results.get("results", []):
+                if "district" in result.get("url", "").lower() or "district" in result.get("content", "").lower():
+                    context_parts.append(f"Source: {result['url']}\nContent: {result['content']}\n")
+
+            if not context_parts:
+                logger.info(f"[DISTRICT-TAVILY] No District-related results found")
+                return []
+
+            context = "\n\n".join(context_parts)
+
+            # Use Gemini to extract offers
+            prompt = f"""Based on these search results, extract District app offers for "{restaurant_name}" in {city}.
+
+Search Results:
+{context}
+
+Return JSON:
+{{
+    "offers": [
+        {{
+            "platform": "district",
+            "offer_type": "pre-booked|walk-in|bank_offer|general",
+            "discount_text": "Full description",
+            "discount_percentage": 20.0,
+            "max_discount": 500,
+            "bank_name": "HDFC" or null,
+            "conditions": "Min Rs 1000" or null
+        }}
+    ]
+}}
+
+Only include District app offers. Return {{"offers": []}} if none found."""
+
+            extracted = await self._gemini_extract_simple(prompt)
+
+            offers = []
+            for item in extracted.get("offers", []):
+                platform_info = PLATFORM_INFO.get(Platform.DISTRICT, {})
+                offers.append(RestaurantOffer(
+                    platform=Platform.DISTRICT,
+                    platform_display_name="District",
+                    offer_type=item.get("offer_type", "general"),
+                    discount_text=item.get("discount_text", ""),
+                    discount_percentage=item.get("discount_percentage"),
+                    max_discount=item.get("max_discount"),
+                    bank_name=item.get("bank_name"),
+                    conditions=item.get("conditions"),
+                    app_link=platform_info.get("app_link"),
+                    platform_url=platform_info.get("website"),
+                ))
+
+            logger.info(f"[DISTRICT-TAVILY] Found {len(offers)} District offers")
+            return offers
+
         except Exception as e:
-            logger.error(f"Error fetching District offers: {e}")
+            logger.error(f"[DISTRICT-TAVILY] Error fetching District offers: {e}")
             return []
+
+    async def _gemini_extract_simple(self, prompt: str) -> dict:
+        """Simple Gemini extraction for District offers."""
+        client = await self._get_client()
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "topP": 0.8,
+                "maxOutputTokens": 1024,
+            },
+        }
+
+        url = f"{self.GEMINI_URL}/models/{self.gemini_model}:generateContent?key={self.gemini_api_key}"
+        response = await client.post(url, json=payload)
+        response.raise_for_status()
+
+        data = response.json()
+        content = data["candidates"][0]["content"]["parts"][0]["text"]
+
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if json_match:
+            try:
+                return json.loads(json_match.group())
+            except json.JSONDecodeError:
+                pass
+
+        return {"offers": []}
 
     async def _search_parallel(
         self,
