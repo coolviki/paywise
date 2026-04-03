@@ -22,13 +22,13 @@ PLATFORM_INFO = {
         "display_name": "Swiggy Dineout",
         "website": "https://www.swiggy.com/dineout",
         "app_link": "swiggy://dineout/search?query={restaurant}",
-        "search_url": "https://www.swiggy.com/dineout/{city_slug}/s?query={restaurant}",
+        "search_url": "https://www.swiggy.com/dineout/search?query={restaurant}",
     },
     Platform.EAZYDINER: {
         "display_name": "EazyDiner",
         "website": "https://www.eazydiner.com",
-        "app_link": "eazydiner://search?query={restaurant}",
-        "search_url": "https://www.eazydiner.com/{city_slug}/s?query={restaurant}",
+        "app_link": "eazydiner://search?q={restaurant}",
+        "search_url": "https://www.eazydiner.com/search?q={restaurant}&city={city_slug}",
     },
     Platform.DISTRICT: {
         "display_name": "District",
