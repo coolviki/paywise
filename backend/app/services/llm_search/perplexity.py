@@ -204,79 +204,19 @@ IMPORTANT: List restaurant offers AND bank offers SEPARATELY. They can be stacke
         )
 
     async def _get_district_offers(self, restaurant_name: str, city: str) -> List[RestaurantOffer]:
-        """Get offers from District using a dedicated Perplexity search."""
+        """Get offers from District using direct HTML scraping.
+
+        District.in is poorly indexed by search engines, so LLM search returns nothing.
+        We use direct scraping to reliably fetch offers from the District website.
+        """
         try:
-            client = await self._get_client()
+            logger.info(f"[DISTRICT] Using direct scraper for: {restaurant_name} in {city}")
 
-            # Create a focused prompt specifically for District offers
-            prompt = f"""Find current District app dining offers for "{restaurant_name}" in {city}.
+            # Use the direct District scraper instead of LLM search
+            scraper = get_district_scraper()
+            offers = await scraper.get_offers(restaurant_name, city)
 
-District is a dining/payment app in India. Search for:
-1. District app discounts at this restaurant
-2. Bank card offers available via District (HDFC, ICICI, Axis, SBI, etc.)
-3. Any promo codes or flat discounts on District
-
-Return offers in this JSON format:
-{{
-    "offers": [
-        {{
-            "platform": "district",
-            "offer_type": "pre-booked|walk-in|bank_offer|general",
-            "discount_text": "Full description",
-            "discount_percentage": 20.0,
-            "max_discount": 500,
-            "bank_name": "HDFC" or null,
-            "conditions": "Min Rs 1000" or null
-        }}
-    ]
-}}
-
-If no District offers found for this restaurant, return {{"offers": []}}."""
-
-            system_prompt = "You are a helpful assistant finding restaurant offers. Return only valid JSON."
-
-            payload = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt},
-                ],
-                "return_citations": True,
-            }
-
-            logger.info(f"[DISTRICT-PERPLEXITY] Searching for District offers: {restaurant_name} in {city}")
-
-            response = await client.post("/chat/completions", json=payload)
-            response.raise_for_status()
-            data = response.json()
-
-            content = data["choices"][0]["message"]["content"]
-            logger.info(f"[DISTRICT-PERPLEXITY] Response: {content[:500]}...")
-
-            # Parse JSON response
-            offers = []
-            json_match = re.search(r'\{[\s\S]*\}', content)
-            if json_match:
-                try:
-                    parsed = json.loads(json_match.group())
-                    for item in parsed.get("offers", []):
-                        platform_info = PLATFORM_INFO.get(Platform.DISTRICT, {})
-                        offers.append(RestaurantOffer(
-                            platform=Platform.DISTRICT,
-                            platform_display_name="District",
-                            offer_type=item.get("offer_type", "general"),
-                            discount_text=item.get("discount_text", ""),
-                            discount_percentage=item.get("discount_percentage"),
-                            max_discount=item.get("max_discount"),
-                            bank_name=item.get("bank_name"),
-                            conditions=item.get("conditions"),
-                            app_link=platform_info.get("app_link"),
-                            platform_url=platform_info.get("website"),
-                        ))
-                except json.JSONDecodeError as e:
-                    logger.warning(f"[DISTRICT-PERPLEXITY] Failed to parse JSON: {e}")
-
-            logger.info(f"[DISTRICT-PERPLEXITY] Found {len(offers)} District offers")
+            logger.info(f"[DISTRICT] Direct scraper found {len(offers)} offers")
             return offers
 
         except Exception as e:
