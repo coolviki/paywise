@@ -287,6 +287,21 @@ class DistrictScraper:
         offers = []
         platform_info = PLATFORM_INFO.get(Platform.DISTRICT, {})
 
+        # Extract city_slug from source_url to build proper app_link
+        # URL format: https://www.district.in/dining/{city_slug}/{restaurant-slug}
+        city_slug = "ncr"  # Default
+        url_match = re.search(r'/dining/([^/]+)/', source_url)
+        if url_match:
+            city_slug = url_match.group(1)
+
+        # Build app_link with proper city_slug substitution
+        app_link = None
+        if platform_info.get("app_link"):
+            try:
+                app_link = platform_info["app_link"].format(city_slug=city_slug)
+            except KeyError:
+                app_link = platform_info.get("app_link")
+
         try:
             # Strategy 1: Parse escaped JSON for restaurant offers (allOffers)
             # Pattern matches: \"allOffers\":[{...}],\"bankOffers
@@ -322,7 +337,7 @@ class DistrictScraper:
                             discount_percentage=discount_pct,
                             conditions=subtitle if subtitle else None,
                             platform_url=source_url,
-                            app_link=platform_info.get("app_link"),
+                            app_link=app_link,
                         ))
                 except json.JSONDecodeError as e:
                     logger.warning(f"[DISTRICT] Failed to parse allOffers JSON: {e}")
@@ -379,7 +394,7 @@ class DistrictScraper:
                     max_discount=max_discount,
                     bank_name=bank_name if bank_name else "Credit/Debit Card",
                     platform_url=source_url,
-                    app_link=platform_info.get("app_link"),
+                    app_link=app_link,
                 ))
 
         except Exception as e:
@@ -388,15 +403,14 @@ class DistrictScraper:
         # Strategy 2: Fallback to HTML parsing if no JSON offers found
         if not offers:
             logger.info("[DISTRICT] No JSON offers found, falling back to HTML parsing")
-            offers = self._parse_offers_html(html, source_url)
+            offers = self._parse_offers_html(html, source_url, app_link)
 
         return offers
 
-    def _parse_offers_html(self, html: str, source_url: str) -> List[RestaurantOffer]:
+    def _parse_offers_html(self, html: str, source_url: str, app_link: Optional[str] = None) -> List[RestaurantOffer]:
         """Fallback HTML parsing for offers."""
         offers = []
         soup = BeautifulSoup(html, "html.parser")
-        platform_info = PLATFORM_INFO.get(Platform.DISTRICT, {})
 
         text_blocks = soup.find_all(['div', 'span', 'p', 'li', 'h3', 'h4'])
         seen_offers = set()
@@ -444,7 +458,7 @@ class DistrictScraper:
                         bank_name=bank_name,
                         conditions=self._extract_conditions(text),
                         platform_url=source_url,
-                        app_link=platform_info.get("app_link"),
+                        app_link=app_link,
                     ))
 
         # Deduplicate and sort by discount
