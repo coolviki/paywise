@@ -89,7 +89,7 @@ Return JSON in this exact format:
     "offers": [
         {{
             "platform": "swiggy_dineout|eazydiner|district",
-            "offer_type": "pre-booked|walk-in|bank_offer|coupon|general",
+            "offer_type": "restaurant|pre-booked|walk-in|bank_offer|coupon",
             "discount_text": "Full description of the offer",
             "discount_percentage": 40.0,
             "max_discount": 500,
@@ -101,11 +101,24 @@ Return JSON in this exact format:
     "summary": "Brief summary of best deals available"
 }}
 
+OFFER TYPE RULES:
+- "restaurant" = Base restaurant discount (e.g., "10% off on Food & Beverages") - available to all
+- "pre-booked" = Pre-booking discount (e.g., "40% off when you pre-book")
+- "walk-in" = Walk-in discount (e.g., "25% off on walk-in via app payment")
+- "bank_offer" = Bank-specific discount (MUST set bank_name field) - additional to restaurant offers
+- "coupon" = Promo code required
+
+EXCLUSIONS - Do NOT include:
+- Loyalty points (EazyPoints, Dineout Points, Coins)
+- Cashback or rewards
+- "Payeazy" or payment method names without actual discount percentage
+
 Platform mapping:
 - Swiggy Dineout, Dineout → "swiggy_dineout"
 - EazyDiner → "eazydiner"
 - District → "district"
 
+IMPORTANT: List restaurant offers AND bank offers SEPARATELY. They can be STACKED by the user.
 Only include currently valid offers. Return empty offers array if no valid offers found."""
 
         payload = {

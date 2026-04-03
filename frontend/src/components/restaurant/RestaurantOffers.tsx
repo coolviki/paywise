@@ -1,6 +1,68 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRestaurantOffersWithFetch } from '../../hooks/useRestaurantOffers';
-import { RestaurantOffer } from '../../types';
+import { RestaurantOffer, RestaurantOfferPlatform } from '../../types';
+
+interface GroupedPlatformOffers {
+  platform: RestaurantOfferPlatform;
+  platform_display_name: string;
+  restaurantOffers: RestaurantOffer[];
+  bankOffers: RestaurantOffer[];
+  combinedMaxSavings: number | null;
+  combinedPercentage: number | null;
+  platformUrl?: string;
+  appLink?: string;
+}
+
+function groupOffersByPlatform(offers: RestaurantOffer[]): GroupedPlatformOffers[] {
+  const grouped = new Map<RestaurantOfferPlatform, GroupedPlatformOffers>();
+
+  for (const offer of offers) {
+    if (!grouped.has(offer.platform)) {
+      grouped.set(offer.platform, {
+        platform: offer.platform,
+        platform_display_name: offer.platform_display_name,
+        restaurantOffers: [],
+        bankOffers: [],
+        combinedMaxSavings: null,
+        combinedPercentage: null,
+        platformUrl: offer.platform_url,
+        appLink: offer.app_link,
+      });
+    }
+
+    const group = grouped.get(offer.platform)!;
+    if (offer.offer_type === 'bank_offer' || offer.bank_name) {
+      group.bankOffers.push(offer);
+    } else {
+      group.restaurantOffers.push(offer);
+    }
+  }
+
+  // Calculate combined savings for each platform
+  for (const group of grouped.values()) {
+    const restaurantMax = Math.max(
+      ...group.restaurantOffers.map((o) => o.max_discount || 0),
+      0
+    );
+    const bankMax = Math.max(
+      ...group.bankOffers.map((o) => o.max_discount || 0),
+      0
+    );
+    group.combinedMaxSavings = restaurantMax + bankMax > 0 ? restaurantMax + bankMax : null;
+
+    const restaurantPct = Math.max(
+      ...group.restaurantOffers.map((o) => o.discount_percentage || 0),
+      0
+    );
+    const bankPct = Math.max(
+      ...group.bankOffers.map((o) => o.discount_percentage || 0),
+      0
+    );
+    group.combinedPercentage = restaurantPct + bankPct > 0 ? restaurantPct + bankPct : null;
+  }
+
+  return Array.from(grouped.values());
+}
 
 interface RestaurantOffersProps {
   restaurantName: string;
@@ -146,13 +208,9 @@ export function RestaurantOffers({
         </div>
       )}
 
-      {/* Offers list */}
+      {/* Offers list - Grouped by platform with combined view */}
       {offers.length > 0 && (
-        <div className="space-y-2">
-          {offers.map((offer, index) => (
-            <OfferCard key={index} offer={offer} isNew={isStreaming && index === offers.length - 1} />
-          ))}
-        </div>
+        <GroupedOffersView offers={offers} isStreaming={isStreaming} />
       )}
 
       {/* No offers found */}
@@ -169,6 +227,234 @@ export function RestaurantOffers({
           {summary}
         </div>
       )}
+    </div>
+  );
+}
+
+interface GroupedOffersViewProps {
+  offers: RestaurantOffer[];
+  isStreaming: boolean;
+}
+
+function GroupedOffersView({ offers, isStreaming }: GroupedOffersViewProps) {
+  const groupedOffers = useMemo(() => groupOffersByPlatform(offers), [offers]);
+
+  return (
+    <div className="space-y-4">
+      {groupedOffers.map((group) => (
+        <CombinedOfferCard key={group.platform} group={group} isStreaming={isStreaming} />
+      ))}
+    </div>
+  );
+}
+
+interface CombinedOfferCardProps {
+  group: GroupedPlatformOffers;
+  isStreaming: boolean;
+}
+
+function CombinedOfferCard({ group, isStreaming }: CombinedOfferCardProps) {
+  const platformColors: Record<string, { bg: string; border: string; header: string }> = {
+    swiggy_dineout: {
+      bg: 'bg-orange-50',
+      border: 'border-orange-200',
+      header: 'bg-orange-500 text-white',
+    },
+    eazydiner: {
+      bg: 'bg-purple-50',
+      border: 'border-purple-200',
+      header: 'bg-purple-500 text-white',
+    },
+    district: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      header: 'bg-blue-500 text-white',
+    },
+    unknown: {
+      bg: 'bg-gray-50',
+      border: 'border-gray-200',
+      header: 'bg-gray-500 text-white',
+    },
+  };
+
+  const colors = platformColors[group.platform] || platformColors.unknown;
+  const hasRestaurantOffers = group.restaurantOffers.length > 0;
+  const hasBankOffers = group.bankOffers.length > 0;
+  const canStack = hasRestaurantOffers && hasBankOffers;
+
+  const handleOpenPlatform = () => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile && group.appLink) {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      const timeout = setTimeout(() => {
+        if (group.platformUrl) {
+          window.open(group.platformUrl, '_blank');
+        }
+        document.body.removeChild(iframe);
+      }, 1500);
+
+      try {
+        iframe.contentWindow?.location.replace(group.appLink);
+        setTimeout(() => {
+          clearTimeout(timeout);
+          document.body.removeChild(iframe);
+        }, 100);
+      } catch {
+        clearTimeout(timeout);
+        if (group.platformUrl) {
+          window.open(group.platformUrl, '_blank');
+        }
+        document.body.removeChild(iframe);
+      }
+    } else if (group.platformUrl) {
+      window.open(group.platformUrl, '_blank');
+    }
+  };
+
+  return (
+    <div className={`rounded-lg border-2 ${colors.border} overflow-hidden`}>
+      {/* Platform Header */}
+      <div className={`px-4 py-2 ${colors.header} flex items-center justify-between`}>
+        <span className="font-semibold">{group.platform_display_name}</span>
+        {isStreaming && (
+          <span className="text-xs opacity-75 animate-pulse">Finding more...</span>
+        )}
+      </div>
+
+      <div className={`${colors.bg} p-4 space-y-3`}>
+        {/* Restaurant Offers Section */}
+        {hasRestaurantOffers && (
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Restaurant Offer
+            </div>
+            {group.restaurantOffers.map((offer, idx) => (
+              <StackableOfferItem key={`rest-${idx}`} offer={offer} type="restaurant" />
+            ))}
+          </div>
+        )}
+
+        {/* Plus sign between stackable offers */}
+        {canStack && (
+          <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white font-bold text-lg shadow-sm">
+              +
+            </div>
+          </div>
+        )}
+
+        {/* Bank Offers Section */}
+        {hasBankOffers && (
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Bank / Payment Offer
+            </div>
+            {group.bankOffers.map((offer, idx) => (
+              <StackableOfferItem key={`bank-${idx}`} offer={offer} type="bank" />
+            ))}
+          </div>
+        )}
+
+        {/* Combined Savings */}
+        {canStack && (group.combinedMaxSavings || group.combinedPercentage) && (
+          <div className="border-t-2 border-dashed border-gray-300 pt-3 mt-3">
+            <div className="bg-green-100 border border-green-300 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-semibold text-green-700 uppercase tracking-wide">
+                    Combined Savings
+                  </div>
+                  <div className="text-sm text-green-800 mt-0.5">
+                    Stack both offers for maximum discount
+                  </div>
+                </div>
+                <div className="text-right">
+                  {group.combinedPercentage && (
+                    <div className="text-xl font-bold text-green-700">
+                      Up to {Math.min(group.combinedPercentage, 100)}%
+                    </div>
+                  )}
+                  {group.combinedMaxSavings && (
+                    <div className="text-sm text-green-600">
+                      Save up to ₹{group.combinedMaxSavings}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Open in Platform button */}
+        {(group.appLink || group.platformUrl) && (
+          <button
+            onClick={handleOpenPlatform}
+            className="w-full mt-2 py-2 px-4 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Open in {group.platform_display_name} →
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface StackableOfferItemProps {
+  offer: RestaurantOffer;
+  type: 'restaurant' | 'bank';
+}
+
+function StackableOfferItem({ offer, type }: StackableOfferItemProps) {
+  const bgColor = type === 'bank' ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200';
+
+  return (
+    <div className={`${bgColor} border rounded-lg p-3`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          {/* Bank badge for bank offers */}
+          {offer.bank_name && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mb-1.5">
+              {offer.bank_name}
+            </span>
+          )}
+
+          {/* Discount text */}
+          <p className="text-sm font-medium text-gray-900">{offer.discount_text}</p>
+
+          {/* Conditions */}
+          {offer.conditions && (
+            <p className="text-xs text-gray-500 mt-1">{offer.conditions}</p>
+          )}
+
+          {/* Coupon code */}
+          {offer.coupon_code && (
+            <div className="mt-1.5">
+              <span className="inline-flex items-center px-2 py-1 bg-gray-100 rounded font-mono text-xs">
+                Code: {offer.coupon_code}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Discount percentage badge */}
+        {offer.discount_percentage && (
+          <div className="flex-shrink-0 text-right">
+            <span className="text-lg font-bold text-gray-900">
+              {offer.discount_percentage}%
+            </span>
+            <span className="block text-xs text-gray-500">off</span>
+            {offer.max_discount && (
+              <span className="block text-xs text-gray-400">
+                max ₹{offer.max_discount}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -238,6 +524,7 @@ function OfferCard({ offer, isNew }: OfferCardProps) {
   };
 
   const offerTypeLabels: Record<string, string> = {
+    'restaurant': 'Restaurant Offer',
     'pre-booked': 'Pre-book',
     'walk-in': 'Walk-in',
     'bank_offer': 'Bank Offer',

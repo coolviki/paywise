@@ -174,23 +174,33 @@ class LLMSearchProvider(ABC):
 
         platforms_str = ", ".join(platform_names)
 
-        return f"""Find current dine-in payment offers for "{restaurant_name}" in {city} from these payment apps: {platforms_str}.
+        return f"""Find current dine-in offers for "{restaurant_name}" in {city} from: {platforms_str}.
 
-Look for:
-1. **Flat discounts** - e.g., "Flat 20% off up to ₹200"
-2. **Pre-booking offers** - discounts for reserving tables in advance
-3. **Walk-in/Pay via app** - discounts when paying through the app at restaurant
-4. **Bank card offers** - extra discounts with HDFC, ICICI, Axis, SBI, Kotak, Amex cards
-5. **Weekday/Weekend specials** - day-specific offers
-6. **Promo codes** - any active coupon codes
+There are TWO types of offers that can be COMBINED/STACKED:
 
-For each offer found, provide:
-- Platform name (Swiggy Dineout / EazyDiner / District)
-- Discount amount (percentage and max cap in ₹)
-- Conditions (minimum order, valid days, card restrictions)
-- Bank name if it's a bank-specific offer
+**TYPE 1: RESTAURANT OFFERS** (base discount from the restaurant)
+- Pre-booking discount (e.g., "40% off when you pre-book via Swiggy Dineout")
+- Walk-in discount (e.g., "10% off on Food & Soft Beverages")
+- These are available to ALL customers regardless of payment method
 
-Important: Only include currently active offers. Be specific with numbers (e.g., "30% off up to ₹150" not just "discount available")."""
+**TYPE 2: BANK/PAYMENT OFFERS** (additional discount with specific bank cards)
+- HDFC, ICICI, Axis, SBI, Kotak, IndusInd, RBL, IDFC, Yes Bank, Amex offers
+- Example: "25% off up to ₹1000 with IndusInd Bank Credit Card"
+- These are ADDITIONAL and can be STACKED with restaurant offers
+
+IMPORTANT RULES:
+1. List restaurant offers and bank offers SEPARATELY (not combined)
+2. Do NOT include loyalty points (like "EazyPoints", "Dineout Coins") - only actual discounts
+3. Do NOT include cashback or rewards - only instant discounts on bill
+4. For EazyDiner: "Payeazy" is the payment method, not an offer - look for actual % discounts
+5. Be specific with numbers: "25% off up to ₹500" not just "discount available"
+
+For each offer, provide:
+- Platform name
+- Whether it's a "restaurant" offer or "bank_offer"
+- Discount percentage and max cap in ₹
+- Bank name (only for bank offers)
+- Conditions (min bill, valid days)"""
 
     def _parse_offer_text(self, text: str, platform: Platform) -> Optional[RestaurantOffer]:
         """
@@ -228,14 +238,18 @@ Important: Only include currently active offers. Be specific with numbers (e.g.,
 
         # Detect offer type
         offer_type = "general"
-        if 'pre-book' in text.lower() or 'pre book' in text.lower():
+        text_lower = text.lower()
+        if 'pre-book' in text_lower or 'pre book' in text_lower:
             offer_type = "pre-booked"
-        elif 'walk-in' in text.lower() or 'walkin' in text.lower() or 'pay via app' in text.lower():
+        elif 'walk-in' in text_lower or 'walkin' in text_lower or 'pay via app' in text_lower:
             offer_type = "walk-in"
         elif bank_name:
             offer_type = "bank_offer"
-        elif 'coupon' in text.lower() or 'code' in text.lower():
+        elif 'coupon' in text_lower or 'code' in text_lower:
             offer_type = "coupon"
+        elif 'food' in text_lower or 'beverage' in text_lower or 'restaurant offer' in text_lower:
+            # Base restaurant discount (not bank-specific)
+            offer_type = "restaurant"
 
         # Extract coupon code
         coupon_match = re.search(r'\b([A-Z0-9]{4,15})\b', text)

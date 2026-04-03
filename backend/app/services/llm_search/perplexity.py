@@ -103,7 +103,7 @@ Return your response in the following JSON format:
     "offers": [
         {
             "platform": "swiggy_dineout|eazydiner|district",
-            "offer_type": "pre-booked|walk-in|bank_offer|coupon|general",
+            "offer_type": "pre-booked|walk-in|bank_offer|coupon|restaurant",
             "discount_text": "Full description of the offer",
             "discount_percentage": 40.0,
             "max_discount": 500,
@@ -120,7 +120,19 @@ Platform mapping:
 - EazyDiner → "eazydiner"
 - District → "district"
 
-IMPORTANT: List ALL offers found, including all bank-specific offers separately."""
+OFFER TYPE RULES:
+- "restaurant" = Base restaurant discount (e.g., "10% off on Food & Beverages") - available to all
+- "pre-booked" = Pre-booking discount (e.g., "40% off when you pre-book")
+- "walk-in" = Walk-in discount (e.g., "25% off on walk-in via app payment")
+- "bank_offer" = Bank-specific discount (set bank_name field) - ADDITIONAL to restaurant offers
+- "coupon" = Promo code required
+
+EXCLUSIONS - Do NOT include:
+- Loyalty points (EazyPoints, Dineout Points, Coins)
+- Cashback or rewards
+- "Payeazy" or similar payment method names without actual discount %
+
+IMPORTANT: List restaurant offers AND bank offers SEPARATELY. They can be stacked by the user."""
 
             payload = {
                 "model": self.model,
@@ -379,16 +391,28 @@ Use EXACTLY these platform names:
 - "EazyDiner" for EazyDiner offers
 - "District" for District offers
 
+OFFER TYPES:
+- "restaurant" = Base discount from restaurant (available to all customers)
+- "pre-booked" = Pre-booking discount
+- "walk-in" = Walk-in payment discount
+- "bank_offer" = Bank card specific discount (list bank name)
+- "coupon" = Promo code required
+
 Example:
-OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 500 | HDFC Infinia | Min Rs 3500
-OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 400 | HDFC Diners | Min Rs 3000
-OFFER: EazyDiner | walk-in | 25% off on bill | - | Pay via EazyDiner
-OFFER: District | pre-booked | 20% off | - | Book via District app
+OFFER: EazyDiner | restaurant | 10% off on Food & Beverages | - | All days
+OFFER: EazyDiner | bank_offer | 25% off up to Rs 1000 | IndusInd Bank | No min bill
+OFFER: Swiggy Dineout | pre-booked | 40% off up to Rs 200 | - | Pre-book via app
+OFFER: Swiggy Dineout | bank_offer | 10% off up to Rs 500 | HDFC | Min Rs 3500
+
+EXCLUSIONS - Do NOT include:
+- Loyalty points (EazyPoints, Dineout Coins)
+- Cashback or rewards
+- "Payeazy" payment method without actual discount %
 
 After all offers, add:
 SUMMARY: Brief summary
 
-List ALL offers including all bank-specific offers separately."""
+List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
 
         payload = {
             "model": self.model,
