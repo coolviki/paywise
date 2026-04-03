@@ -21,20 +21,20 @@ PLATFORM_INFO = {
     Platform.SWIGGY_DINEOUT: {
         "display_name": "Swiggy Dineout",
         "website": "https://www.swiggy.com/dineout",
-        "app_link": "swiggy://dineout",
-        "search_url": "https://www.swiggy.com/dineout/search?query={restaurant}",
+        "app_link": "swiggy://dineout/search?query={restaurant}",
+        "search_url": "https://www.swiggy.com/dineout/{city_slug}/s?query={restaurant}",
     },
     Platform.EAZYDINER: {
         "display_name": "EazyDiner",
         "website": "https://www.eazydiner.com",
-        "app_link": "eazydiner://",
-        "search_url": "https://www.eazydiner.com/search?q={restaurant}&city={city}",
+        "app_link": "eazydiner://search?query={restaurant}",
+        "search_url": "https://www.eazydiner.com/{city_slug}/s?query={restaurant}",
     },
     Platform.DISTRICT: {
         "display_name": "District",
         "website": "https://www.district.in/dining/",
-        "app_link": "district://dining",
-        "search_url": "https://www.district.in/dining/{city}?q={restaurant}",
+        "app_link": "district://dining/{city_slug}",
+        "search_url": "https://www.district.in/dining/{city_slug}",
     },
     Platform.UNKNOWN: {
         "display_name": "Unknown",
@@ -77,19 +77,61 @@ class RestaurantOffer(BaseModel):
         """Create offer with platform links auto-populated."""
         info = PLATFORM_INFO.get(platform, PLATFORM_INFO[Platform.UNKNOWN])
 
+        # Map city to platform-specific city slugs
+        city_slug_map = {
+            # Swiggy/EazyDiner city slugs
+            "delhi": "delhi-ncr",
+            "new delhi": "delhi-ncr",
+            "gurgaon": "delhi-ncr",
+            "gurugram": "delhi-ncr",
+            "noida": "delhi-ncr",
+            "cyber hub": "delhi-ncr",
+            "dlf cyber city": "delhi-ncr",
+            "mumbai": "mumbai",
+            "bangalore": "bangalore",
+            "bengaluru": "bangalore",
+            "hyderabad": "hyderabad",
+            "chennai": "chennai",
+            "pune": "pune",
+            "kolkata": "kolkata",
+        }
+        city_slug = city_slug_map.get(city.lower().strip(), city.lower().replace(" ", "-"))
+
+        # For District, use different city codes
+        if platform == Platform.DISTRICT:
+            district_city_map = {
+                "delhi": "ncr", "new delhi": "ncr", "gurgaon": "ncr",
+                "gurugram": "ncr", "noida": "ncr", "cyber hub": "ncr",
+                "mumbai": "mumbai", "bangalore": "bangalore",
+                "bengaluru": "bangalore", "hyderabad": "hyderabad",
+            }
+            city_slug = district_city_map.get(city.lower().strip(), "ncr")
+
+        # URL-encode restaurant name
+        import urllib.parse
+        restaurant_encoded = urllib.parse.quote(restaurant_name)
+
         # Build search URL
         platform_url = None
         if info.get("search_url"):
             platform_url = info["search_url"].format(
-                restaurant=restaurant_name.replace(" ", "+"),
-                city=city.lower().replace(" ", "-"),
+                restaurant=restaurant_encoded,
+                city_slug=city_slug,
+            )
+
+        # Build app link
+        app_link = None
+        if info.get("app_link"):
+            app_link = info["app_link"].format(
+                restaurant=restaurant_encoded,
+                city_slug=city_slug,
             )
 
         return cls(
             platform=platform,
             platform_display_name=info["display_name"],
             platform_url=platform_url,
-            app_link=info.get("app_link"),
+            app_link=app_link,
             **kwargs
         )
 

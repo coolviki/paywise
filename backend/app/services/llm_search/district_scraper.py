@@ -114,10 +114,40 @@ class DistrictScraper:
         matches = sum(1 for word in search_words if word in text_lower)
         return matches >= len(search_words) * 0.6
 
-    def _make_slug(self, name: str) -> str:
-        """Convert restaurant name to URL slug."""
+    def _make_slug(self, name: str, strip_location: bool = False) -> str:
+        """Convert restaurant name to URL slug.
+
+        Args:
+            name: Restaurant name
+            strip_location: If True, remove common location words from the name
+        """
+        slug = name.lower()
+
+        # Optionally strip location suffixes that users might append to restaurant names
+        # Be careful NOT to strip words that might be part of the actual restaurant name
+        if strip_location:
+            # Only strip these when they appear at the END or are clearly location suffixes
+            # Don't strip "delhi" alone as it could be part of names like "Cafe Delhi Heights"
+            location_suffixes = [
+                # These are safe to strip as they're clearly locations appended to names
+                r'\s+cyber\s*hub$', r'\s+cyberhub$', r'\s+dlf\s+cyber\s+city$',
+                r'\s+dlf\s+cyber\s+hub$', r'\s+cyber\s+city$',
+                r'\s+khan\s+market$', r'\s+connaught\s+place$', r'\s+cp$',
+                r'\s+saket$', r'\s+hauz\s+khas$', r'\s+hkv$',
+                r'\s+defence\s+colony$', r'\s+greater\s+kailash$', r'\s+gk$',
+                r'\s+vasant\s+kunj$', r'\s+aerocity$',
+                r'\s+gurgaon$', r'\s+gurugram$', r'\s+noida$',
+                r'\s+bandra$', r'\s+andheri$', r'\s+juhu$', r'\s+lower\s+parel$',
+                r'\s+worli$', r'\s+colaba$', r'\s+bkc$', r'\s+powai$',
+                r'\s+indiranagar$', r'\s+koramangala$', r'\s+whitefield$',
+                r'\s+mg\s+road$', r'\s+brigade\s+road$',
+                r'\s+sector\s+\d+$',  # Sector 29, Sector 24, etc.
+            ]
+            for pattern in location_suffixes:
+                slug = re.sub(pattern, '', slug, flags=re.IGNORECASE)
+
         # Remove special characters, convert to lowercase, replace spaces with hyphens
-        slug = re.sub(r'[^\w\s-]', '', name.lower())
+        slug = re.sub(r'[^\w\s-]', '', slug)
         slug = re.sub(r'[\s_]+', '-', slug)
         slug = re.sub(r'-+', '-', slug)
         return slug.strip('-')
@@ -142,6 +172,10 @@ class DistrictScraper:
                 "gurgaon": "ncr",
                 "gurugram": "ncr",
                 "noida": "ncr",
+                "cyber hub": "ncr",
+                "cyberhub": "ncr",
+                "dlf cyber city": "ncr",
+                "dlf cyber hub": "ncr",
                 "mumbai": "mumbai",
                 "bangalore": "bangalore",
                 "bengaluru": "bangalore",
@@ -150,7 +184,7 @@ class DistrictScraper:
                 "pune": "pune",
                 "kolkata": "kolkata",
             }
-            district_city = city_map.get(city.lower(), city.lower())
+            district_city = city_map.get(city.lower().strip(), "ncr")  # Default to NCR
 
             # Common location suffixes for each city
             location_suffixes = {
@@ -172,17 +206,37 @@ class DistrictScraper:
                 ],
             }
 
-            base_slug = self._make_slug(restaurant_name)
+            # Create slugs - try with location stripped first (handles "Cafe Delhi Heights Cyber Hub")
+            base_slug_clean = self._make_slug(restaurant_name, strip_location=True)
+            base_slug_raw = self._make_slug(restaurant_name, strip_location=False)
             suffixes = location_suffixes.get(district_city, [])
 
-            # Build list of slugs to try - base slug with various location suffixes
-            slugs = [base_slug]  # Try base slug first
-            for suffix in suffixes:
-                slugs.append(f"{base_slug}-{suffix}")
+            # Build list of slugs to try
+            slugs = []
 
-            # Also try with city name
+            # First priority: clean slug (location stripped) + location suffixes
+            slugs.append(base_slug_clean)
+            for suffix in suffixes:
+                slugs.append(f"{base_slug_clean}-{suffix}")
+
+            # Second priority: raw slug (if different from clean)
+            if base_slug_raw != base_slug_clean:
+                slugs.append(base_slug_raw)
+                for suffix in suffixes:
+                    slugs.append(f"{base_slug_raw}-{suffix}")
+
+            # Also try with city name and without apostrophes
             slugs.append(self._make_slug(f"{restaurant_name} {city}"))
-            slugs.append(self._make_slug(restaurant_name.replace("'", "")))
+            slugs.append(self._make_slug(restaurant_name.replace("'", ""), strip_location=True))
+
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_slugs = []
+            for s in slugs:
+                if s not in seen:
+                    seen.add(s)
+                    unique_slugs.append(s)
+            slugs = unique_slugs
 
             logger.info(f"[DISTRICT] Trying {len(slugs)} URL variations...")
 
