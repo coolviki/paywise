@@ -5,6 +5,7 @@ we directly fetch and parse the restaurant page.
 """
 
 import re
+import json
 import logging
 from typing import List, Optional
 from urllib.parse import quote
@@ -224,50 +225,142 @@ class DistrictScraper:
         return offers
 
     def _parse_offers(self, html: str, source_url: str) -> List[RestaurantOffer]:
-        """Parse offers from District restaurant page HTML."""
-        offers = []
-        soup = BeautifulSoup(html, "html.parser")
+        """Parse offers from District restaurant page.
 
+        District is a Next.js app that embeds offer data in escaped JSON format.
+        The JSON uses double-escaped quotes like \\" instead of ".
+        """
+        offers = []
         platform_info = PLATFORM_INFO.get(Platform.DISTRICT, {})
 
-        # Look for offer sections - District typically shows offers in cards/sections
-        # Common patterns: "% OFF", "₹ OFF", "Flat", etc.
+        try:
+            # Strategy 1: Parse escaped JSON for restaurant offers (allOffers)
+            # Pattern matches: \"allOffers\":[{...}],\"bankOffers
+            all_offers_pattern = r'\\"allOffers\\":\s*(\[.*?\])\s*,\s*\\"bankOffers'
+            all_offers_match = re.search(all_offers_pattern, html)
 
-        # Find all text containing offer patterns
-        offer_patterns = [
-            r'flat\s*(\d+)%?\s*off',
-            r'(\d+)%\s*off',
-            r'flat\s*₹?\s*(\d+)\s*off',
-            r'₹\s*(\d+)\s*off',
-            r'up\s*to\s*₹?\s*(\d+)',
-            r'save\s*₹?\s*(\d+)',
-        ]
+            if all_offers_match:
+                escaped_json = all_offers_match.group(1)
+                # Unescape the JSON: \\" -> " and \\n -> space
+                unescaped = escaped_json.replace('\\"', '"').replace('\\\\n', ' ').replace('\\n', ' ')
 
-        # Get all text blocks that might contain offers
+                try:
+                    all_offers_data = json.loads(unescaped)
+                    logger.info(f"[DISTRICT] Found {len(all_offers_data)} restaurant offers in JSON")
+
+                    for offer_data in all_offers_data:
+                        offer_title = offer_data.get("offerTitle", "").strip()
+                        title = offer_data.get("title", "")
+                        subtitle = offer_data.get("subTitle", "")
+
+                        # Parse "FLAT 10% OFF" style
+                        pct_match = re.search(r'(\d+)%', offer_title)
+                        discount_pct = float(pct_match.group(1)) if pct_match else None
+
+                        # Clean up the offer text
+                        discount_text = f"{offer_title} ({title})" if title else offer_title
+
+                        offers.append(RestaurantOffer(
+                            platform=Platform.DISTRICT,
+                            platform_display_name="District",
+                            offer_type="restaurant",
+                            discount_text=discount_text,
+                            discount_percentage=discount_pct,
+                            conditions=subtitle if subtitle else None,
+                            platform_url=source_url,
+                            app_link=platform_info.get("app_link"),
+                        ))
+                except json.JSONDecodeError as e:
+                    logger.warning(f"[DISTRICT] Failed to parse allOffers JSON: {e}")
+
+            # Strategy 2: Parse bank offers from escaped JSON
+            # Pattern matches: \"title\":\"15% OFF up to ₹1500 on Amex...\"
+            bank_offer_pattern = r'\\"title\\":\\"((?:Flat|[0-9]+%)[^\\]*(?:OFF|off)[^\\]*)\\"'
+            bank_matches = re.findall(bank_offer_pattern, html, re.IGNORECASE)
+
+            logger.info(f"[DISTRICT] Found {len(bank_matches)} potential bank offer matches")
+
+            seen_bank_offers = set()
+            for offer_text in bank_matches:
+                # Decode unicode escapes (₹ is \u20b9)
+                try:
+                    offer_text = offer_text.encode('utf-8').decode('unicode_escape')
+                except:
+                    pass
+
+                # Skip if we've seen this exact text
+                if offer_text in seen_bank_offers:
+                    continue
+                seen_bank_offers.add(offer_text)
+
+                # Detect bank/card name
+                bank_name = self._detect_bank(offer_text)
+
+                # Skip generic offers without bank name (like "Flat ₹50 OFF using MobiKwik")
+                if not bank_name and 'mobikwik' not in offer_text.lower():
+                    # Check if it's a credit/debit card offer
+                    if 'credit' not in offer_text.lower() and 'debit' not in offer_text.lower():
+                        continue
+
+                # Parse discount percentage
+                pct_match = re.search(r'(\d+)%', offer_text)
+                discount_pct = float(pct_match.group(1)) if pct_match else None
+
+                # Parse max discount (flat amount or "up to" amount)
+                flat_match = re.search(r'₹\s*(\d+)', offer_text)
+                max_discount = float(flat_match.group(1)) if flat_match else None
+
+                upto_match = re.search(r'up\s*to\s*₹?\s*(\d+)', offer_text, re.IGNORECASE)
+                if upto_match:
+                    max_discount = float(upto_match.group(1))
+
+                logger.info(f"[DISTRICT] Bank offer: {offer_text[:60]}... (bank={bank_name})")
+
+                offers.append(RestaurantOffer(
+                    platform=Platform.DISTRICT,
+                    platform_display_name="District",
+                    offer_type="bank_offer",
+                    discount_text=offer_text,
+                    discount_percentage=discount_pct,
+                    max_discount=max_discount,
+                    bank_name=bank_name if bank_name else "Credit/Debit Card",
+                    platform_url=source_url,
+                    app_link=platform_info.get("app_link"),
+                ))
+
+        except Exception as e:
+            logger.error(f"[DISTRICT] Error parsing JSON offers: {e}", exc_info=True)
+
+        # Strategy 2: Fallback to HTML parsing if no JSON offers found
+        if not offers:
+            logger.info("[DISTRICT] No JSON offers found, falling back to HTML parsing")
+            offers = self._parse_offers_html(html, source_url)
+
+        return offers
+
+    def _parse_offers_html(self, html: str, source_url: str) -> List[RestaurantOffer]:
+        """Fallback HTML parsing for offers."""
+        offers = []
+        soup = BeautifulSoup(html, "html.parser")
+        platform_info = PLATFORM_INFO.get(Platform.DISTRICT, {})
+
         text_blocks = soup.find_all(['div', 'span', 'p', 'li', 'h3', 'h4'])
-
         seen_offers = set()
 
         for block in text_blocks:
             text = block.get_text(strip=True)
             text_lower = text.lower()
 
-            # Skip if too short or too long
             if len(text) < 10 or len(text) > 500:
                 continue
 
-            # Check if this looks like an offer
             if any(keyword in text_lower for keyword in ['off', 'discount', 'cashback', 'save', '₹']):
-
-                # Extract discount percentage
                 pct_match = re.search(r'(\d+(?:\.\d+)?)\s*%', text)
                 discount_pct = float(pct_match.group(1)) if pct_match else None
 
-                # Extract max discount amount
                 max_match = re.search(r'(?:up\s*to|max|upto)\s*₹?\s*(\d+)', text_lower)
                 max_discount = float(max_match.group(1)) if max_match else None
 
-                # If no max from "up to", try to find flat amount
                 if not max_discount:
                     flat_match = re.search(r'(?:flat\s*)?₹\s*(\d+)\s*off', text_lower)
                     if flat_match:
@@ -324,6 +417,20 @@ class DistrictScraper:
             'au bank': 'AU Bank',
             'federal': 'Federal Bank',
             'indusind': 'IndusInd',
+            'pnb': 'PNB',
+            'punjab national': 'PNB',
+            'bob': 'Bank of Baroda',
+            'bank of baroda': 'Bank of Baroda',
+            'canara': 'Canara Bank',
+            'union bank': 'Union Bank',
+            'indian bank': 'Indian Bank',
+            'citi': 'Citi',
+            'citibank': 'Citi',
+            'standard chartered': 'Standard Chartered',
+            'sc bank': 'Standard Chartered',
+            'dbs': 'DBS',
+            'taj': 'Taj (IHCL)',
+            'tide': 'Tide',
         }
 
         for pattern, name in bank_patterns.items():
