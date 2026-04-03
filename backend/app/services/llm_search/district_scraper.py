@@ -138,25 +138,64 @@ class DistrictScraper:
             city_map = {
                 "delhi": "ncr",
                 "new delhi": "ncr",
+                "gurgaon": "ncr",
+                "gurugram": "ncr",
+                "noida": "ncr",
                 "mumbai": "mumbai",
                 "bangalore": "bangalore",
+                "bengaluru": "bangalore",
+                "hyderabad": "hyderabad",
+                "chennai": "chennai",
+                "pune": "pune",
+                "kolkata": "kolkata",
             }
             district_city = city_map.get(city.lower(), city.lower())
 
-            # Try different slug variations
-            slugs = [
-                self._make_slug(restaurant_name),
-                self._make_slug(f"{restaurant_name} {city}"),
-                self._make_slug(restaurant_name.replace("'", "")),
-            ]
+            # Common location suffixes for each city
+            location_suffixes = {
+                "ncr": [
+                    "dlf-cyber-city", "cyber-hub", "cyberhub", "cyber-city",
+                    "khan-market", "connaught-place", "cp", "saket", "select-citywalk",
+                    "gurgaon", "gurugram", "delhi", "new-delhi", "noida",
+                    "hauz-khas", "defence-colony", "greater-kailash", "gk",
+                    "vasant-kunj", "janpath", "nehru-place", "aerocity",
+                    "dlf-phase", "sector-29", "mg-road", "sohna-road",
+                ],
+                "mumbai": [
+                    "bandra", "andheri", "juhu", "lower-parel", "worli",
+                    "colaba", "fort", "bkc", "powai", "goregaon", "malad",
+                ],
+                "bangalore": [
+                    "indiranagar", "koramangala", "whitefield", "mg-road",
+                    "brigade-road", "jp-nagar", "hsr-layout", "electronic-city",
+                ],
+            }
+
+            base_slug = self._make_slug(restaurant_name)
+            suffixes = location_suffixes.get(district_city, [])
+
+            # Build list of slugs to try - base slug with various location suffixes
+            slugs = [base_slug]  # Try base slug first
+            for suffix in suffixes:
+                slugs.append(f"{base_slug}-{suffix}")
+
+            # Also try with city name
+            slugs.append(self._make_slug(f"{restaurant_name} {city}"))
+            slugs.append(self._make_slug(restaurant_name.replace("'", "")))
+
+            logger.info(f"[DISTRICT] Trying {len(slugs)} URL variations...")
 
             for slug in slugs:
                 test_url = f"{self.BASE_URL}/dining/{district_city}/{slug}"
                 try:
-                    response = await client.get(test_url)
-                    if response.status_code == 200 and "offers" in response.text.lower():
-                        restaurant_url = test_url
-                        break
+                    response = await client.head(test_url, follow_redirects=True)
+                    if response.status_code == 200:
+                        # Verify it's a real page with content
+                        full_response = await client.get(test_url)
+                        if full_response.status_code == 200 and len(full_response.text) > 5000:
+                            logger.info(f"[DISTRICT] Found working URL: {test_url}")
+                            restaurant_url = test_url
+                            break
                 except:
                     continue
 
