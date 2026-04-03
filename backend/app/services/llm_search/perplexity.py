@@ -12,8 +12,56 @@ import httpx
 
 from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform, PLATFORM_INFO
 from .district_scraper import get_district_scraper
+import urllib.parse
 
 logger = logging.getLogger(__name__)
+
+
+def _build_platform_urls(platform: Platform, restaurant_name: str, city: str) -> tuple:
+    """Build platform_url and app_link with restaurant name substituted.
+
+    Returns:
+        tuple: (platform_url, app_link)
+    """
+    platform_info = PLATFORM_INFO.get(platform, {})
+
+    # URL-encode the restaurant name
+    restaurant_encoded = urllib.parse.quote(restaurant_name)
+
+    # Map city to platform-specific slug
+    city_lower = city.lower().strip() if city else ""
+    city_slug_map = {
+        "delhi": "delhi-ncr", "new delhi": "delhi-ncr",
+        "gurgaon": "delhi-ncr", "gurugram": "delhi-ncr",
+        "noida": "delhi-ncr", "cyber hub": "delhi-ncr",
+        "mumbai": "mumbai", "bangalore": "bangalore",
+        "bengaluru": "bangalore", "hyderabad": "hyderabad",
+    }
+    city_slug = city_slug_map.get(city_lower, "delhi-ncr")
+
+    # Build platform URL from search_url template
+    platform_url = None
+    if platform_info.get("search_url"):
+        try:
+            platform_url = platform_info["search_url"].format(
+                restaurant=restaurant_encoded,
+                city_slug=city_slug,
+            )
+        except KeyError:
+            platform_url = platform_info.get("website")
+
+    # Build app link
+    app_link = None
+    if platform_info.get("app_link"):
+        try:
+            app_link = platform_info["app_link"].format(
+                restaurant=restaurant_encoded,
+                city_slug=city_slug,
+            )
+        except KeyError:
+            app_link = platform_info.get("app_link")
+
+    return platform_url, app_link
 
 
 class PerplexityProvider(LLMSearchProvider):
@@ -162,7 +210,7 @@ IMPORTANT: List restaurant offers AND bank offers SEPARATELY. They can be stacke
             logger.info(f"[PERPLEXITY] Response content preview: {content[:500]}...")
             logger.info(f"[PERPLEXITY] Citations: {sources}")
 
-            offers = self._parse_response(content, restaurant_name)
+            offers = self._parse_response(content, restaurant_name, city)
             logger.info(f"[PERPLEXITY] Parsed {len(offers)} offers from response")
 
         # If District is in the platforms list (or no filter), also fetch from District scraper
@@ -382,7 +430,7 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
                         # Check for complete offer lines
                         while "\n" in buffer:
                             line_content, buffer = buffer.split("\n", 1)
-                            offer = self._parse_offer_line(line_content)
+                            offer = self._parse_offer_line(line_content, restaurant_name, city)
                             if offer:
                                 # Filter by user's selected platforms
                                 if platforms is None or offer.platform in platforms:
@@ -392,7 +440,7 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
 
             # Process remaining buffer
             if buffer.strip():
-                offer = self._parse_offer_line(buffer)
+                offer = self._parse_offer_line(buffer, restaurant_name, city)
                 if offer:
                     if platforms is None or offer.platform in platforms:
                         yield offer
@@ -405,7 +453,7 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
             for offer in district_offers:
                 yield offer
 
-    def _parse_response(self, content: str, restaurant_name: str) -> List[RestaurantOffer]:
+    def _parse_response(self, content: str, restaurant_name: str, city: str = "") -> List[RestaurantOffer]:
         """Parse JSON response into RestaurantOffer objects."""
         offers = []
 
@@ -416,7 +464,7 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
                 data = json.loads(json_match.group())
                 for item in data.get("offers", []):
                     platform = self._map_platform(item.get("platform", "unknown"))
-                    platform_info = PLATFORM_INFO.get(platform, {})
+                    platform_url, app_link = _build_platform_urls(platform, restaurant_name, city)
                     offers.append(RestaurantOffer(
                         platform=platform,
                         platform_display_name=self._get_platform_display_name(platform),
@@ -427,16 +475,16 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
                         bank_name=item.get("bank_name"),
                         conditions=item.get("conditions"),
                         coupon_code=item.get("coupon_code"),
-                        app_link=platform_info.get("app_link"),
-                        platform_url=platform_info.get("website"),
+                        app_link=app_link,
+                        platform_url=platform_url,
                     ))
             except json.JSONDecodeError:
                 # Fall back to text parsing
-                offers = self._parse_text_response(content)
+                offers = self._parse_text_response(content, restaurant_name, city)
 
         return offers
 
-    def _parse_text_response(self, content: str) -> List[RestaurantOffer]:
+    def _parse_text_response(self, content: str, restaurant_name: str = "", city: str = "") -> List[RestaurantOffer]:
         """Parse unstructured text response."""
         offers = []
         lines = content.split("\n")
@@ -444,13 +492,13 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
         for line in lines:
             if "%" in line and any(p in line.lower() for p in ["swiggy", "eazydiner", "dineout", "district"]):
                 platform = self._detect_platform(line)
-                offer = self._parse_offer_text(line, platform)
+                offer = self._parse_offer_text(line, platform, restaurant_name, city)
                 if offer:
                     offers.append(offer)
 
         return offers
 
-    def _parse_offer_line(self, line: str) -> Optional[RestaurantOffer]:
+    def _parse_offer_line(self, line: str, restaurant_name: str = "", city: str = "") -> Optional[RestaurantOffer]:
         """Parse a single OFFER: formatted line."""
         if not line.strip().startswith("OFFER:"):
             return None
@@ -474,7 +522,7 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
         max_match = re.search(r'(?:up to|upto|max)[:\s]*(?:Rs\.?|₹)?\s*(\d+)', discount_text.lower())
         max_discount = float(max_match.group(1)) if max_match else None
 
-        platform_info = PLATFORM_INFO.get(platform, {})
+        platform_url, app_link = _build_platform_urls(platform, restaurant_name, city)
         return RestaurantOffer(
             platform=platform,
             platform_display_name=self._get_platform_display_name(platform),
@@ -484,8 +532,8 @@ List restaurant offers AND bank offers SEPARATELY. They can be STACKED."""
             max_discount=max_discount,
             bank_name=bank_name,
             conditions=conditions,
-            app_link=platform_info.get("app_link"),
-            platform_url=platform_info.get("website"),
+            app_link=app_link,
+            platform_url=platform_url,
         )
 
     def _detect_platform(self, text: str) -> Platform:

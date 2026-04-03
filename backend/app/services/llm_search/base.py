@@ -244,12 +244,13 @@ For each offer, provide:
 - Bank name (only for bank offers)
 - Conditions (min bill, valid days)"""
 
-    def _parse_offer_text(self, text: str, platform: Platform) -> Optional[RestaurantOffer]:
+    def _parse_offer_text(self, text: str, platform: Platform, restaurant_name: str = "", city: str = "") -> Optional[RestaurantOffer]:
         """
         Parse raw offer text into a structured RestaurantOffer.
         Override in subclasses for provider-specific parsing.
         """
         import re
+        import urllib.parse
 
         # Extract discount percentage
         discount_match = re.search(r'(\d+(?:\.\d+)?)\s*%', text)
@@ -304,11 +305,42 @@ For each offer, provide:
 
         platform_names = {
             Platform.SWIGGY_DINEOUT: "Swiggy Dineout",
-            Platform.ZOMATO_PAY: "Zomato Pay",
             Platform.EAZYDINER: "EazyDiner",
             Platform.DISTRICT: "District",
             Platform.UNKNOWN: "Unknown",
         }
+
+        # Build platform URLs
+        platform_url, app_link = None, None
+        if restaurant_name:
+            platform_info = PLATFORM_INFO.get(platform, {})
+            restaurant_encoded = urllib.parse.quote(restaurant_name)
+
+            # Map city to slug
+            city_lower = city.lower().strip() if city else ""
+            city_slug_map = {
+                "delhi": "delhi-ncr", "new delhi": "delhi-ncr",
+                "gurgaon": "delhi-ncr", "gurugram": "delhi-ncr",
+                "noida": "delhi-ncr", "cyber hub": "delhi-ncr",
+                "mumbai": "mumbai", "bangalore": "bangalore",
+            }
+            city_slug = city_slug_map.get(city_lower, "delhi-ncr")
+
+            if platform_info.get("search_url"):
+                try:
+                    platform_url = platform_info["search_url"].format(
+                        restaurant=restaurant_encoded, city_slug=city_slug
+                    )
+                except KeyError:
+                    platform_url = platform_info.get("website")
+
+            if platform_info.get("app_link"):
+                try:
+                    app_link = platform_info["app_link"].format(
+                        restaurant=restaurant_encoded, city_slug=city_slug
+                    )
+                except KeyError:
+                    pass
 
         return RestaurantOffer(
             platform=platform,
@@ -319,4 +351,6 @@ For each offer, provide:
             max_discount=max_discount,
             bank_name=bank_name,
             coupon_code=coupon_code,
+            platform_url=platform_url,
+            app_link=app_link,
         )

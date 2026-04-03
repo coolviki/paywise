@@ -12,8 +12,44 @@ import httpx
 
 from .base import LLMSearchProvider, RestaurantOffer, SearchResult, Platform, PLATFORM_INFO
 from .district_scraper import get_district_scraper
+import urllib.parse
 
 logger = logging.getLogger(__name__)
+
+
+def _build_platform_urls(platform: Platform, restaurant_name: str, city: str) -> tuple:
+    """Build platform_url and app_link with restaurant name substituted."""
+    platform_info = PLATFORM_INFO.get(platform, {})
+    restaurant_encoded = urllib.parse.quote(restaurant_name) if restaurant_name else ""
+
+    city_lower = city.lower().strip() if city else ""
+    city_slug_map = {
+        "delhi": "delhi-ncr", "new delhi": "delhi-ncr",
+        "gurgaon": "delhi-ncr", "gurugram": "delhi-ncr",
+        "noida": "delhi-ncr", "cyber hub": "delhi-ncr",
+        "mumbai": "mumbai", "bangalore": "bangalore",
+    }
+    city_slug = city_slug_map.get(city_lower, "delhi-ncr")
+
+    platform_url = None
+    if platform_info.get("search_url"):
+        try:
+            platform_url = platform_info["search_url"].format(
+                restaurant=restaurant_encoded, city_slug=city_slug
+            )
+        except KeyError:
+            platform_url = platform_info.get("website")
+
+    app_link = None
+    if platform_info.get("app_link"):
+        try:
+            app_link = platform_info["app_link"].format(
+                restaurant=restaurant_encoded, city_slug=city_slug
+            )
+        except KeyError:
+            pass
+
+    return platform_url, app_link
 
 
 class TavilyProvider(LLMSearchProvider):
@@ -210,7 +246,7 @@ Only include currently valid offers. Return empty offers array if no valid offer
             # Convert to RestaurantOffer objects
             for item in extracted.get("offers", []):
                 platform = self._map_platform(item.get("platform", "unknown"))
-                platform_info = PLATFORM_INFO.get(platform, {})
+                platform_url, app_link = _build_platform_urls(platform, restaurant_name, city)
                 offers.append(RestaurantOffer(
                     platform=platform,
                     platform_display_name=self._get_platform_display_name(platform),
@@ -221,8 +257,8 @@ Only include currently valid offers. Return empty offers array if no valid offer
                     bank_name=item.get("bank_name"),
                     conditions=item.get("conditions"),
                     coupon_code=item.get("coupon_code"),
-                    app_link=platform_info.get("app_link"),
-                    platform_url=platform_info.get("website"),
+                    app_link=app_link,
+                    platform_url=platform_url,
                 ))
 
         # If District is in the platforms list, also fetch from District scraper
