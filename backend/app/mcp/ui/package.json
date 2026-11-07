@@ -1,0 +1,13 @@
+{
+  "name": "paywise-mcp-ui",
+  "private": true,
+  "description": "MCP Apps views (interactive cards) for the PayWise Claude connector. Built into self-contained HTML in dist/, which the Python server serves.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/ext-apps": "2.0.4",
+    "esbuild": "^0.25.0"
+  }
+}

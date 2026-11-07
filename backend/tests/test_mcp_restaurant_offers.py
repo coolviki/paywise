@@ -64,6 +64,8 @@ def test_returns_dineout_offers_and_flags_offers_on_users_banks(client, seed, fa
     assert by_platform["district"]["matches_your_cards"] is True
     assert by_platform["eazydiner"]["matches_your_cards"] is False
     assert out["your_card_banks"] == ["HDFC Bank"]
+    # best card to pay with at a restaurant is included for the card UI
+    assert out["pay_with"]["card_name"] == "HDFC Diners Club Black"
     # No dine-out apps chosen in PayWise -> search all three
     assert set(out["platforms_searched"]) == {"swiggy_dineout", "eazydiner", "district"}
 

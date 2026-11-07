@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>PayWise dine-out offers</title>
+<style>:root {
+  color-scheme: light dark;
+  --pw-bg: var(--color-background-primary, #ffffff);
+  --pw-bg-2: var(--color-background-secondary, #f6f5f1);
+  --pw-text: var(--color-text-primary, #1f1e1c);
+  --pw-text-2: var(--color-text-secondary, #5f5e5a);
+  --pw-text-3: var(--color-text-tertiary, #888780);
+  --pw-border: var(--color-border-secondary, rgba(31, 30, 28, 0.12));
+  --pw-border-strong: var(--color-border-primary, rgba(31, 30, 28, 0.25));
+  --pw-accent: var(--color-text-info, #185fa5);
+  --pw-accent-bg: var(--color-background-info, #e6f1fb);
+  --pw-good: var(--color-text-success, #27500a);
+  --pw-good-bg: var(--color-background-success, #eaf3de);
+  --pw-radius: var(--border-radius-lg, 12px);
+  --pw-radius-sm: var(--border-radius-md, 8px);
+  --pw-font: var(--font-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pw-bg: var(--color-background-primary, #262624);
+    --pw-bg-2: var(--color-background-secondary, #30302e);
+    --pw-text: var(--color-text-primary, #f1efe8);
+    --pw-text-2: var(--color-text-secondary, #b4b2a9);
+    --pw-text-3: var(--color-text-tertiary, #888780);
+    --pw-border: var(--color-border-secondary, rgba(241, 239, 232, 0.14));
+    --pw-border-strong: var(--color-border-primary, rgba(241, 239, 232, 0.28));
+    --pw-accent: var(--color-text-info, #85b7eb);
+    --pw-accent-bg: var(--color-background-info, #0c447c);
+    --pw-good: var(--color-text-success, #c0dd97);
+    --pw-good-bg: var(--color-background-success, #27500a);
+  }
+}
+:root[data-theme="dark"] {
+  --pw-bg: var(--color-background-primary, #262624);
+  --pw-bg-2: var(--color-background-secondary, #30302e);
+  --pw-text: var(--color-text-primary, #f1efe8);
+  --pw-text-2: var(--color-text-secondary, #b4b2a9);
+  --pw-text-3: var(--color-text-tertiary, #888780);
+  --pw-border: var(--color-border-secondary, rgba(241, 239, 232, 0.14));
+  --pw-border-strong: var(--color-border-primary, rgba(241, 239, 232, 0.28));
+  --pw-accent: var(--color-text-info, #85b7eb);
+  --pw-accent-bg: var(--color-background-info, #0c447c);
+  --pw-good: var(--color-text-success, #c0dd97);
+  --pw-good-bg: var(--color-background-success, #27500a);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; }
+body { font-family: var(--pw-font); color: var(--pw-text); font-size: 14px; line-height: 1.45; }
+.card { background: var(--pw-bg); border: 1px solid var(--pw-border); border-radius: var(--pw-radius); padding: 14px 16px; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.title { margin: 0; font-size: 16px; font-weight: 600; }
+.sub { margin: 2px 0 0; font-size: 12.5px; color: var(--pw-text-2); }
+.brand { font-size: 11px; color: var(--pw-text-3); white-space: nowrap; letter-spacing: 0.02em; }
+.hero { display: flex; gap: 10px; align-items: flex-start; background: var(--pw-good-bg); color: var(--pw-good); border-radius: var(--pw-radius-sm); padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
+.hero b { display: block; font-weight: 600; }
+.hero .ico { font-size: 18px; line-height: 1; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--pw-border); border-radius: var(--pw-radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tile.best { border: 2px solid var(--pw-accent); padding: 9px 11px; }
+.plat { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+.dot { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 600; flex: none; }
+.dot.swiggy_dineout { background: #fae8dc; color: #8a3a0c; }
+.dot.eazydiner { background: #e1f5ee; color: #085041; }
+.dot.district { background: #eeedfe; color: #3c3489; }
+.dot.other { background: var(--pw-bg-2); color: var(--pw-text-2); }
+.big { font-size: 20px; font-weight: 650; margin: 2px 0 0; overflow-wrap: anywhere; }
+.big.text { font-size: 14.5px; font-weight: 600; }
+.muted { font-size: 12px; color: var(--pw-text-2); margin: 0; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--pw-bg-2); color: var(--pw-text-2); }
+.chip.mine { background: var(--pw-accent-bg); color: var(--pw-accent); font-weight: 600; }
+.code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; padding: 1px 6px; border: 1px dashed var(--pw-border-strong); border-radius: 6px; }
+.foot { border-top: 1px solid var(--pw-border); margin-top: 12px; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: var(--pw-text-2); }
+.foot b { color: var(--pw-text); font-weight: 600; }
+button, .linkbtn { font: inherit; font-size: 12.5px; color: var(--pw-text); background: transparent; border: 1px solid var(--pw-border-strong); border-radius: var(--pw-radius-sm); padding: 5px 10px; cursor: pointer; }
+button:hover, .linkbtn:hover { background: var(--pw-bg-2); }
+.tile .linkbtn { align-self: flex-start; margin-top: 6px; padding: 3px 8px; font-size: 12px; }
+.rows { display: flex; flex-direction: column; }
+.row { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 4px; border-top: 1px solid var(--pw-border); }
+.row:first-child { border-top: none; }
+.row.top { background: var(--pw-good-bg); border-radius: var(--pw-radius-sm); border-top: none; padding: 10px 8px; }
+.row.top + .row { border-top: none; }
+.rank { width: 24px; height: 24px; border-radius: 50%; background: var(--pw-bg-2); color: var(--pw-text-2); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.row.top .rank { background: var(--pw-good); color: var(--pw-good-bg); }
+.cname { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmeta { font-size: 12px; color: var(--pw-text-2); }
+.rate { text-align: right; }
+.rate .pct { font-weight: 650; font-size: 15px; }
+.rate .amt { font-size: 12px; color: var(--pw-text-2); }
+.row.top .cmeta, .row.top .rate .amt { color: var(--pw-good); }
+.state { text-align: center; padding: 22px 8px; color: var(--pw-text-2); font-size: 13px; }
+.spinner { width: 22px; height: 22px; margin: 0 auto 10px; border-radius: 50%; border: 2.5px solid var(--pw-border); border-top-color: var(--pw-accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.skel { height: 74px; border-radius: var(--pw-radius-sm); background: var(--pw-bg-2); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.55; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>(()=>{var D="2026-01-26";function R({name:e,version:s,onToolInput:o,onToolResult:a,onCancelled:n}){let r=window.parent,l=r&&r!==window,d=1,u=new Map,p=i=>l&&r.postMessage({jsonrpc:"2.0",...i},"*");function y(i,c){let f=d++;return p({id:f,method:i,params:c}),new Promise((j,O)=>{u.set(f,{resolve:j,reject:O}),setTimeout(()=>{u.delete(f)&&O(new Error(`${i} timed out`))},15e3)})}let k=(i,c)=>p({method:i,params:c});function P(i){i.method==="ui/resource-teardown"||i.method==="ping"?p({id:i.id,result:{}}):p({id:i.id,error:{code:-32601,message:`Method not found: ${i.method}`}})}window.addEventListener("message",i=>{if(l&&i.source!==r)return;let c=i.data;if(!(!c||c.jsonrpc!=="2.0")){if(c.id!=null&&!c.method){let f=u.get(c.id);if(!f)return;u.delete(c.id),c.error?f.reject(new Error(c.error.message||"Request failed")):f.resolve(c.result);return}if(c.id!=null&&c.method)return P(c);switch(c.method){case"ui/notifications/tool-input":o&&o(c.params?.arguments||{});break;case"ui/notifications/tool-result":a&&a(A(c.params));break;case"ui/notifications/tool-cancelled":n&&n(c.params);break;case"ui/notifications/host-context-changed":L(c.params);break}}});let x=0,C=null;function E(){let i=Math.ceil(document.documentElement.getBoundingClientRect().height);i&&i!==x&&(x=i,k("ui/notifications/size-changed",{height:i}))}typeof ResizeObserver<"u"&&new ResizeObserver(()=>{clearTimeout(C),C=setTimeout(E,30)}).observe(document.documentElement);async function T(){if(!l)return null;let i=await y("ui/initialize",{appInfo:{name:e,version:s},appCapabilities:{},protocolVersion:D});return L(i?.hostContext),k("ui/notifications/initialized",{}),E(),i}return{embedded:l,connect:T,openLink:i=>y("ui/open-link",{url:i}).catch(()=>window.open(i,"_blank","noopener")),sendMessage:i=>y("ui/message",{role:"user",content:[{type:"text",text:i}]}).catch(()=>null)}}function A(e){if(!e)return null;if(e.structuredContent)return e.structuredContent;let s=(e.content||[]).find(o=>o.type==="text")?.text;if(!s)return null;try{return JSON.parse(s)}catch{return null}}function L(e){if(!e)return;let s=document.documentElement;(e.theme==="light"||e.theme==="dark")&&(s.dataset.theme=e.theme,s.style.colorScheme=e.theme);let o=e.styles?.variables;if(o)for(let[n,r]of Object.entries(o))n.startsWith("--")&&typeof r=="string"&&r&&s.style.setProperty(n,r);let a=e.styles?.css?.fonts;if(a&&!document.getElementById("host-fonts")){let n=document.createElement("style");n.id="host-fonts",n.textContent=a,document.head.appendChild(n)}if(e.safeAreaInsets){let{top:n=0,right:r=0,bottom:l=0,left:d=0}=e.safeAreaInsets;document.body.style.padding=`${n}px ${r}px ${l}px ${d}px`}}function t(e,s={},...o){let a=document.createElement(e);for(let[n,r]of Object.entries(s||{}))r==null||r===!1||(n==="class"?a.className=r:n.startsWith("on")&&typeof r=="function"?a.addEventListener(n.slice(2),r):a.setAttribute(n,r));for(let n of o.flat())n==null||n===!1||a.appendChild(typeof n=="string"||typeof n=="number"?document.createTextNode(String(n)):n);return a}function b(e){try{let s=new URL(e);return s.protocol==="https:"||s.protocol==="http:"?s.href:null}catch{return null}}var w={swiggy_dineout:{name:"Swiggy Dineout",initial:"S"},eazydiner:{name:"EazyDiner",initial:"E"},district:{name:"District",initial:"D"}},m=document.getElementById("root"),h={},v=!1;function M(e){let s=e.platform in w?e.platform:"other",o=w[s]||{name:e.platform_display_name||"Offer",initial:"\u2022"};return{key:s,name:e.platform_display_name||o.name,initial:o.initial}}function N(e){if(e.discount_percentage)return{text:`${Math.round(e.discount_percentage)}% off`,big:!0};let s=/(₹\s?[\d,]+|\d+\s?%)\s*(off|cashback)?/i.exec(e.discount_text||"");return s?{text:`${s[1].replace(/\s/g,"")} ${s[2]?s[2].toLowerCase():"off"}`,big:!0}:{text:e.discount_text||"Offer",big:!1}}var z=e=>!e.bank_name||e.matches_your_cards;function S(e){return(z(e)?1e3:0)+(e.discount_percentage||0)+(e.matches_your_cards?.5:0)}var _=e=>(e||"").replace(/\s+bank$/i,""),U=e=>e&&e.charAt(0).toUpperCase()+e.slice(1);function g(e){let s=(e?.platforms_searched||[]).map(o=>w[o]?.name||o).join(" \xB7 ");return t("div",{class:"head"},t("div",{},t("p",{class:"title"},e?.restaurant||h.restaurant||"Restaurant offers"),t("p",{class:"sub"},[e?.city||h.city,s&&`Live from ${s}`].filter(Boolean).join(" \xB7 "))),t("span",{class:"brand"},"PayWise"))}function B(){m.replaceChildren(t("div",{class:"card"},g(null),t("div",{class:"state"},t("div",{class:"spinner"}),"Checking Swiggy Dineout, EazyDiner and District\u2026"),t("div",{class:"grid"},t("div",{class:"skel"}),t("div",{class:"skel"}),t("div",{class:"skel"}))))}function W(e,s,o){let a=M(e),n=N(e),r=b(e.platform_url)||b(e.source_url),l=U([e.offer_type&&e.offer_type.replace(/[_-]/g," "),e.valid_days].filter(Boolean).join(" \xB7 ")),d=n.big&&e.discount_text&&e.discount_text!==n.text?e.discount_text:null,u=[e.max_discount&&`up to \u20B9${Math.round(e.max_discount).toLocaleString("en-IN")}`,e.min_order&&`min \u20B9${Math.round(e.min_order).toLocaleString("en-IN")}`].filter(Boolean).join(" \xB7 ");return t("div",{class:`tile${s?" best":""}`},t("div",{class:"plat"},t("span",{class:`dot ${a.key}`,"aria-hidden":"true"},a.initial),a.name),t("p",{class:`big${n.big?"":" text"}`},n.text),d&&t("p",{class:"muted"},d),l&&t("p",{class:"muted"},l),u&&t("p",{class:"muted"},u),e.conditions&&t("p",{class:"muted"},e.conditions),t("div",{class:"chips"},e.bank_name&&(e.matches_your_cards?t("span",{class:"chip mine"},`\u2713 Your ${_(e.bank_name)} card`):t("span",{class:"chip"},`Needs ${_(e.bank_name)} card`)),!e.bank_name&&t("span",{class:"chip"},"Any card"),e.coupon_code&&t("span",{class:"code"},e.coupon_code)),r&&t("button",{class:"linkbtn",onclick:()=>o.openLink(r)},"Open \u2197"))}function I(e,s){if(v=!0,!e){m.replaceChildren(t("div",{class:"card"},g(null),t("div",{class:"state"},"No result to show.")));return}let o=[...e.offers||[]].sort((l,d)=>S(d)-S(l)),a=o[0],n=e.pay_with,r=[g(e)];if(!o.length)r.push(t("div",{class:"state"},e.note||"No dine-out offers found for this restaurant right now."));else{let l=M(a);r.push(t("div",{class:"hero"},t("span",{class:"ico","aria-hidden":"true"},"\u{1F3C6}"),t("div",{},t("b",{},`Top deal: ${N(a).text} on ${l.name}`),a.matches_your_cards?`Pay with your ${_(a.bank_name)} card to get it`+(n&&n.bank===a.bank_name?` (${n.card_name} also earns ${n.reward_rate_percent}% ${n.reward_type})`:""):z(a)?n?`Pay with ${n.card_name} for ${n.reward_rate_percent}% ${n.reward_type} on top`:a.discount_text||"":`Needs a ${_(a.bank_name)} card, which you don't have`))),r.push(t("div",{class:"grid"},o.map((d,u)=>W(d,u===0,s))))}r.push(t("div",{class:"foot"},n?t("span",{},"\u{1F4B3} Best card here: ",t("b",{},n.card_name),` \xB7 ${n.reward_rate_percent}% ${n.reward_type}`):t("span",{},`${o.length} offer${o.length===1?"":"s"} found`),o.length>1&&t("button",{onclick:()=>s.sendMessage(`Compare the dine-out offers for ${e.restaurant} in ${e.city} and tell me the single best way to pay, including which of my cards to use.`)},"Compare for me \u2197"))),m.replaceChildren(t("div",{class:"card"},r))}var $=R({name:"PayWise dine-out offers",version:"1.0.0",onToolInput:e=>{h=e||{},v||B()},onToolResult:e=>I(e,$),onCancelled:()=>{v||m.replaceChildren(t("div",{class:"card"},g(null),t("div",{class:"state"},"Search cancelled.")))}});B();$.connect().catch(()=>{});window.__paywiseRender=(e,s)=>{h=s||{},I(e,$)};})();
+</script>
+</body>
+</html>

@@ -13,6 +13,8 @@ Security model (Phase 1):
 import asyncio
 import logging
 from datetime import date
+from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional
 from uuid import UUID
 
@@ -92,6 +94,52 @@ paywise_mcp = FastMCP(
     # requests on Railway's public domain. Auth is enforced by bearer key instead.
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
 )
+
+
+# ---------------------------------------------------------------------------
+# MCP Apps views (interactive cards rendered inside Claude)
+# Source: app/mcp/ui/src  ->  built by `npm run build` into app/mcp/ui/dist
+# ---------------------------------------------------------------------------
+MCP_APP_MIME_TYPE = "text/html;profile=mcp-app"
+UI_DIST = Path(__file__).parent / "ui" / "dist"
+RESTAURANT_OFFERS_UI = "ui://paywise/restaurant-offers.html"
+CARD_RANKING_UI = "ui://paywise/card-ranking.html"
+
+
+def _ui_meta(uri: str) -> dict:
+    # "ui/resourceUri" is the legacy key some hosts still read
+    return {"ui": {"resourceUri": uri}, "ui/resourceUri": uri}
+
+
+@lru_cache(maxsize=None)
+def _load_view(name: str) -> str:
+    return (UI_DIST / f"{name}.html").read_text(encoding="utf-8")
+
+
+# Views are fully self-contained (inline CSS/JS), so no CSP domains are needed.
+_VIEW_RESOURCE_META = {"ui": {"prefersBorder": False}}
+
+
+@paywise_mcp.resource(
+    RESTAURANT_OFFERS_UI,
+    name="restaurant_offers_view",
+    title="Dine-out offers card",
+    mime_type=MCP_APP_MIME_TYPE,
+    meta=_VIEW_RESOURCE_META,
+)
+def restaurant_offers_view() -> str:
+    return _load_view("restaurant-offers")
+
+
+@paywise_mcp.resource(
+    CARD_RANKING_UI,
+    name="card_ranking_view",
+    title="Card ranking card",
+    mime_type=MCP_APP_MIME_TYPE,
+    meta=_VIEW_RESOURCE_META,
+)
+def card_ranking_view() -> str:
+    return _load_view("card-ranking")
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +224,7 @@ def list_my_cards(ctx: Context) -> dict:
         db.close()
 
 
-@paywise_mcp.tool(annotations=READ_ONLY)
+@paywise_mcp.tool(annotations=READ_ONLY, meta=_ui_meta(CARD_RANKING_UI))
 def recommend_card(
     ctx: Context,
     merchant: str,
@@ -310,7 +358,10 @@ async def find_place(ctx: Context, query: str) -> dict:
         })
     return {"query": query, "places": places}
 
-@paywise_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=True))
+@paywise_mcp.tool(
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=True),
+    meta=_ui_meta(RESTAURANT_OFFERS_UI),
+)
 async def get_restaurant_offers(
     ctx: Context,
     restaurant: str,
@@ -346,6 +397,11 @@ async def get_restaurant_offers(
             pm.card.bank.name for pm in load_user_payment_methods(db, user_id)
             if pm.card and pm.card.bank
         })
+        ranked = rank_cards_for_user(db, user_id, restaurant, "restaurant")
+        pay_with = None
+        if ranked:
+            top = ranked[0]
+            pay_with = {k: top[k] for k in ("card_name", "bank", "reward_rate_percent", "reward_type", "reason")}
     finally:
         db.close()
 
@@ -385,6 +441,7 @@ async def get_restaurant_offers(
         "city": result.city,
         "platforms_searched": [p.value for p in selected],
         "your_card_banks": user_banks,
+        "pay_with": pay_with,
         "offers": offers,
         "summary": result.summary,
         "sources": result.sources[:8],
