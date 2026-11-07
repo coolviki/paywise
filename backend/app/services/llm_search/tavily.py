@@ -354,8 +354,10 @@ Only include currently valid offers. Return empty offers array if no valid offer
         all_sources = []
         summaries = []
 
-        for result in results:
+        for platform, result in zip(platforms, results):
             if isinstance(result, Exception):
+                # Don't drop silently: a failed platform otherwise looks like "no offers"
+                logger.warning(f"[TAVILY] Parallel search failed for {platform.value}: {type(result).__name__}: {result}")
                 continue
             all_offers.extend(result.offers)
             all_sources.extend(result.sources)

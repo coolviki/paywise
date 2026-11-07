@@ -84,7 +84,9 @@ def test_uses_users_enabled_dineout_apps(client, db, seed, fake_provider):
     out = call_tool(client, _key(client, seed["alice"]), "get_restaurant_offers",
                     {"restaurant": "Bercos", "city": "Delhi"})
     assert set(out["platforms_searched"]) == {"swiggy_dineout", "district"}
-    assert set(fake_provider.calls[-1]["platforms"]) == {Platform.SWIGGY_DINEOUT, Platform.DISTRICT}
+    # one independent search per app
+    assert sorted(c["platforms"][0].value for c in fake_provider.calls) == ["district", "swiggy_dineout"]
+    assert all(len(c["platforms"]) == 1 for c in fake_provider.calls)
 
 
 def test_explicit_platforms_and_zomato_alias(client, seed, fake_provider):
@@ -93,20 +95,89 @@ def test_explicit_platforms_and_zomato_alias(client, seed, fake_provider):
     assert out["platforms_searched"] == ["district", "eazydiner"]
 
 
-def test_provider_failure_and_timeout_return_friendly_note(client, seed, monkeypatch):
+def test_provider_failure_and_timeout_are_reported_per_app(client, seed, monkeypatch):
     key = _key(client, seed["alice"])
+    monkeypatch.setattr(mcp_server, "RESTAURANT_RETRY_DELAY_S", 0)
     monkeypatch.setattr(mcp_server, "_get_provider", lambda: FakeProvider(fail=True))
     out = call_tool(client, key, "get_restaurant_offers", {"restaurant": "X", "city": "Delhi"})
-    assert out["offers"] == [] and "Could not fetch" in out["note"]
+    assert out["offers"] == [] and out["complete"] is False
+    assert all(s["status"] == "error" and s["attempts"] == 2 for s in out["platform_status"].values())
+    assert "search failed" in out["note"]
 
-    monkeypatch.setattr(mcp_server, "RESTAURANT_SEARCH_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(mcp_server, "RESTAURANT_ATTEMPT_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(mcp_server, "RESTAURANT_SEARCH_TIMEOUT_S", 8)
     monkeypatch.setattr(mcp_server, "_get_provider", lambda: FakeProvider(delay=1))
     out = call_tool(client, key, "get_restaurant_offers", {"restaurant": "X", "city": "Delhi"})
+    assert {s["status"] for s in out["platform_status"].values()} == {"timed_out"}
     assert "timed out" in out["note"]
 
     monkeypatch.setattr(mcp_server, "_get_provider", lambda: None)
     out = call_tool(client, key, "get_restaurant_offers", {"restaurant": "X", "city": "Delhi"})
     assert "not configured" in out["note"]
+
+
+class FlakyEazyDinerProvider(FakeProvider):
+    """Reproduces the reported bug: in a combined search EazyDiner's search fails
+    (e.g. rate limit), but searched again on its own it finds offers."""
+
+    def __init__(self, eazydiner_failures=1, eazydiner_empty=False):
+        super().__init__()
+        self.eazydiner_failures = eazydiner_failures
+        self.eazydiner_empty = eazydiner_empty
+
+    async def search_restaurant_offers(self, restaurant_name, city, platforms=None, parallel=True):
+        if platforms == [Platform.EAZYDINER]:
+            self.calls.append({"platforms": platforms})
+            if self.eazydiner_failures > 0:
+                self.eazydiner_failures -= 1
+                raise RuntimeError("429 Too Many Requests")
+            if self.eazydiner_empty:
+                return SearchResult(restaurant_name=restaurant_name, city=city, offers=[], provider="fake")
+            return SearchResult(restaurant_name=restaurant_name, city=city, provider="fake", offers=[
+                RestaurantOffer(platform=Platform.EAZYDINER, platform_display_name="EazyDiner",
+                                offer_type="bank_offer", discount_text="30% off with HSBC Premier",
+                                discount_percentage=30, bank_name="HSBC")])
+        return await super().search_restaurant_offers(restaurant_name, city, platforms, parallel)
+
+
+def test_bug_eazydiner_failure_is_retried_and_recovered(client, seed, monkeypatch):
+    fp = FlakyEazyDinerProvider(eazydiner_failures=1)
+    monkeypatch.setattr(mcp_server, "_get_provider", lambda: fp)
+    monkeypatch.setattr(mcp_server, "RESTAURANT_RETRY_DELAY_S", 0)
+    out = call_tool(client, _key(client, seed["alice"]), "get_restaurant_offers",
+                    {"restaurant": "Wok in the Clouds", "city": "Gurgaon"})
+    st = out["platform_status"]["eazydiner"]
+    assert st["status"] == "ok" and st["attempts"] == 2
+    assert any(o["platform"] == "eazydiner" and "HSBC" in o["discount_text"] for o in out["offers"])
+    assert out["complete"] is True and "note" not in out
+    # each app is searched on its own, so one app can't hide another's results
+    assert {o["platform"] for o in out["offers"]} == {"swiggy_dineout", "eazydiner", "district"}
+
+
+def test_bug_eazydiner_persistent_failure_is_reported_not_silent(client, seed, monkeypatch):
+    fp = FlakyEazyDinerProvider(eazydiner_failures=5)
+    monkeypatch.setattr(mcp_server, "_get_provider", lambda: fp)
+    monkeypatch.setattr(mcp_server, "RESTAURANT_RETRY_DELAY_S", 0)
+    out = call_tool(client, _key(client, seed["alice"]), "get_restaurant_offers",
+                    {"restaurant": "Wok in the Clouds", "city": "Gurgaon"})
+    st = out["platform_status"]["eazydiner"]
+    assert st["status"] == "error" and st["attempts"] == 2 and "429" in st["error"]
+    assert out["platforms_without_results"] == ["eazydiner"] and out["complete"] is False
+    assert "EazyDiner: search failed" in out["note"] and "EazyDiner" in out["summary"]
+    # other apps' offers still returned
+    assert {o["platform"] for o in out["offers"]} == {"swiggy_dineout", "district"}
+    assert out["platform_status"]["swiggy_dineout"]["status"] == "ok"
+
+
+def test_empty_app_is_retried_then_reported_as_no_offers(client, seed, monkeypatch):
+    fp = FlakyEazyDinerProvider(eazydiner_failures=0, eazydiner_empty=True)
+    monkeypatch.setattr(mcp_server, "_get_provider", lambda: fp)
+    monkeypatch.setattr(mcp_server, "RESTAURANT_RETRY_DELAY_S", 0)
+    out = call_tool(client, _key(client, seed["alice"]), "get_restaurant_offers",
+                    {"restaurant": "Wok in the Clouds", "city": "Gurgaon"})
+    assert out["platform_status"]["eazydiner"] == {"status": "no_offers", "offers": 0, "attempts": 2,
+                                                  "seconds": out["platform_status"]["eazydiner"]["seconds"]}
+    assert "EazyDiner: no offers found" in out["note"]
 
 
 def test_bank_name_matching():
