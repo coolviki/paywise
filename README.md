@@ -144,6 +144,30 @@ All tools are **read-only**. Claude cannot add, change or delete anything in Pay
 | `find_place` | `query` | Google Places lookup to confirm a merchant and suggest its category |
 | `get_restaurant_offers` | `restaurant`, `city`, `platforms?` | **Live dine-out deals** from Swiggy Dineout, EazyDiner and District (Zomato's dining offers now live on District): pre-booked and walk-in discounts plus bank offers, with `matches_your_cards` set when an offer is for a bank you hold. Uses the dine-out apps you enabled in PayWise (all three if none). Live web search, so it takes 10–40 s |
 
+### Interactive cards in Claude (MCP Apps)
+
+`recommend_card` and `get_restaurant_offers` also return **visual cards** that Claude shows right in the chat,
+using [MCP Apps](https://github.com/modelcontextprotocol/ext-apps). Hosts that don't support MCP Apps simply
+get the normal text answer.
+
+<p>
+  <img src="docs/screenshots/4_claude_dineout_card.png" width="260" alt="Dine-out offers card">
+  <img src="docs/screenshots/5_claude_card_ranking.png" width="260" alt="Card ranking card">
+</p>
+
+- **Dine-out card:** the top usable deal, with a tile per offer (platform, discount, conditions, "✓ Your HDFC card" when
+  it matches a card you hold, and an **Open** link), plus the best card to pay with. Offers needing a bank you don't
+  hold are listed last. **Compare for me** asks Claude to work out the best way to pay.
+- **Card ranking card:** your cards ranked for the merchant, with reward %, estimated ₹ and the source of the
+  rate (brand benefit, campaign with end date, or base rate).
+- Follows Claude's light/dark theme and resizes to fit its content. Each view is one self-contained ~14 KB HTML file
+  (no CDN, so no CSP exceptions needed).
+
+**Editing the cards:** source is in `backend/app/mcp/ui/src/`. Rebuild and commit `dist/` (Railway only runs Python):
+```bash
+cd backend/app/mcp/ui && npm install && npm run build
+```
+
 The ranking is deterministic and uses the same logic as the in-app recommendation
 (`rank_cards_for_user` in `backend/app/services/recommendation_service.py`). No LLM is called inside
 PayWise on this path: Claude explains, PayWise calculates.

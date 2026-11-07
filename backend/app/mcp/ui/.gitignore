@@ -1,0 +1,3 @@
+node_modules/
+# dist/ IS committed: the Python server serves these built views
+!dist/
