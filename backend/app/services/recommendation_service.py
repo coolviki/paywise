@@ -235,6 +235,72 @@ def _generate_insight(
     return f"{card_name} earns {rate}% {reward_type} on this purchase."
 
 
+def load_user_payment_methods(db: Session, user_id: UUID) -> List[PaymentMethod]:
+    """Active card-backed payment methods for ONE user. Every caller that
+    shows card data must go through this so results stay scoped to the user."""
+    return (
+        db.query(PaymentMethod)
+        .options(
+            joinedload(PaymentMethod.card).joinedload(Card.bank),
+        )
+        .filter(
+            PaymentMethod.user_id == user_id,
+            PaymentMethod.is_active == True,
+            PaymentMethod.card_id.isnot(None),
+        )
+        .all()
+    )
+
+
+def rank_cards_for_user(
+    db: Session,
+    user_id: UUID,
+    place_name: str,
+    place_category: Optional[str] = None,
+    transaction_amount: Optional[float] = None,
+) -> List[dict]:
+    """Deterministic (no-LLM) ranking of ALL of a user's cards for a merchant.
+
+    Used by the Claude connector: Claude does the explaining, this does the maths.
+    """
+    payment_methods = [pm for pm in load_user_payment_methods(db, user_id) if pm.card]
+    if not payment_methods:
+        return []
+
+    ecosystem_benefits = _resolve_ecosystem_benefits(db, place_name, payment_methods)
+    category_type = _get_category_type(place_category)
+
+    ranked = []
+    for pm in payment_methods:
+        rate, reward_type, description = _get_effective_rate(pm, ecosystem_benefits)
+        benefit = ecosystem_benefits.get(str(pm.card_id))
+        bank_name = pm.card.bank.name if pm.card.bank else "Unknown"
+        if benefit:
+            source = "campaign" if benefit.get("is_campaign") else "brand_ecosystem"
+        else:
+            source = "base_rate"
+        ranked.append({
+            "card_name": pm.card.name,
+            "bank": bank_name,
+            "nickname": pm.nickname,
+            "reward_rate_percent": rate,
+            "reward_type": reward_type,
+            "estimated_reward_inr": round(rate / 100 * transaction_amount, 2) if transaction_amount else None,
+            "rate_source": source,
+            "matched_brand": benefit["brand_name"] if benefit else None,
+            "benefit_description": description,
+            "valid_until": benefit.get("campaign_end_date") if benefit else None,
+            "reason": _generate_reason(pm, ecosystem_benefits, place_name),
+            "terms_url": pm.card.terms_url or BANK_SOURCE_URLS.get(bank_name),
+            "category_detected": category_type,
+        })
+
+    ranked.sort(key=lambda r: r["reward_rate_percent"], reverse=True)
+    for i, r in enumerate(ranked, start=1):
+        r["rank"] = i
+    return ranked
+
+
 class RecommendationService:
     @staticmethod
     async def get_recommendation(
@@ -245,18 +311,7 @@ class RecommendationService:
         """Get payment recommendation using database logic."""
 
         # Get user's payment methods
-        payment_methods = (
-            db.query(PaymentMethod)
-            .options(
-                joinedload(PaymentMethod.card).joinedload(Card.bank),
-            )
-            .filter(
-                PaymentMethod.user_id == user_id,
-                PaymentMethod.is_active == True,
-                PaymentMethod.card_id.isnot(None),
-            )
-            .all()
-        )
+        payment_methods = load_user_payment_methods(db, user_id)
 
         if not payment_methods:
             return None

@@ -19,6 +19,7 @@ import { Search } from './pages/Search';
 import { Recommendation } from './pages/Recommendation';
 import { MyCards } from './pages/MyCards';
 import { Settings } from './pages/Settings';
+import { ConnectClaude } from './pages/ConnectClaude';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/claude"
+        element={
+          <ProtectedRoute>
+            <ConnectClaude />
           </ProtectedRoute>
         }
       />

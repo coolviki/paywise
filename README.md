@@ -99,6 +99,29 @@ alembic upgrade head
 - `VITE_FIREBASE_*` - Firebase client configuration
 - `VITE_GOOGLE_PLACES_API_KEY` - Google Places API key
 
+## Use PayWise from Claude (MCP connector)
+
+PayWise exposes a remote MCP server at `https://<backend>/mcp`, so you can ask Claude
+(web, desktop or mobile) *"which card should I use at Croma for ₹65k?"* without opening the app.
+
+**Set up (per user):**
+1. In PayWise go to **Settings → Connect to Claude** and generate a personal key (shown once).
+2. On claude.ai open **Settings → Connectors → Add custom connector**, paste the URL, and under
+   **Request headers** add `Authorization: Bearer pw_live_...`.
+3. The connector then also works in the Claude mobile app.
+
+**Tools (all read-only):** `list_my_cards`, `recommend_card`, `get_card_offers`, `find_place`.
+
+**Security model:** the user is resolved from the key on every request (`McpBearerAuth` in
+`backend/app/mcp/server.py`). No tool accepts a user id, so a user can only ever see their own
+cards. Only a SHA-256 hash of each key is stored; keys can be revoked anytime.
+
+**Tests** (needs PostgreSQL):
+```bash
+cd backend
+TEST_DATABASE_URL=postgresql://user:pass@localhost/paywise_test pytest tests
+```
+
 ## Project Structure
 
 ```

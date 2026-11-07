@@ -15,6 +15,7 @@ import {
   Moon,
   Sun,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -111,6 +112,22 @@ export function Settings() {
               label="Default Currency"
               value="INR"
               onClick={() => {}}
+              isLast
+            />
+          </Card>
+        </section>
+
+        {/* Integrations Section */}
+        <section>
+          <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 px-1">
+            Integrations
+          </h2>
+          <Card>
+            <SettingsItem
+              icon={<Sparkles className="w-5 h-5" />}
+              label="Connect to Claude"
+              value="New"
+              onClick={() => navigate('/settings/claude')}
               isLast
             />
           </Card>

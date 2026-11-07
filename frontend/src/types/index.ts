@@ -338,3 +338,16 @@ export interface RestaurantOffersState {
   summary?: string;
   error?: string;
 }
+
+// Claude connector (MCP) personal API keys
+export interface McpKey {
+  id: string;
+  name: string;
+  key_prefix: string;
+  created_at: string;
+  last_used_at?: string | null;
+}
+
+export interface McpKeyCreated extends McpKey {
+  api_key: string; // shown only once
+}
