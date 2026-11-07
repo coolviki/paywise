@@ -109,6 +109,38 @@ function render(data, bridge) {
 
   const children = [header(data)];
 
+  // Apps that returned nothing are shown, never silently dropped
+  const missing = Object.entries(data.platform_status || {}).filter(([, st]) => st.status !== "ok");
+  if (missing.length) {
+    const label = { no_offers: "no offers found", timed_out: "timed out", error: "search failed" };
+    children.push(
+      h(
+        "div",
+        { class: "warn" },
+        h("span", { class: "ico", "aria-hidden": "true" }, "⚠️"),
+        h(
+          "div",
+          { style: "flex:1;min-width:0" },
+          h("b", {}, "Not every app answered"),
+          missing.map(([p, st]) =>
+            h("div", {}, `${PLATFORM[p]?.name || p}: ${label[st.status] || st.status}` +
+              (st.attempts > 1 ? ` (tried ${st.attempts}×)` : "")),
+          ),
+        ),
+        h(
+          "button",
+          {
+            onclick: () =>
+              bridge.sendMessage(
+                `Search ${missing.map(([p]) => PLATFORM[p]?.name || p).join(" and ")} again on its own for ${data.restaurant} in ${data.city}.`,
+              ),
+          },
+          "Search again ↗",
+        ),
+      ),
+    );
+  }
+
   if (!offers.length) {
     children.push(h("div", { class: "state" }, data.note || "No dine-out offers found for this restaurant right now."));
   } else {

@@ -292,9 +292,10 @@ IMPORTANT: List restaurant offers AND bank offers SEPARATELY. They can be stacke
         all_sources = []
         summaries = []
 
-        for result in results:
+        for platform, result in zip(platforms, results):
             if isinstance(result, Exception):
-                # Log error but continue with other results
+                # Don't drop silently: a failed platform otherwise looks like "no offers"
+                logger.warning(f"[PERPLEXITY] Parallel search failed for {platform.value}: {type(result).__name__}: {result}")
                 continue
             all_offers.extend(result.offers)
             all_sources.extend(result.sources)

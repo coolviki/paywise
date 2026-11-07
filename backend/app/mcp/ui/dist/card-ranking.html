@@ -18,6 +18,8 @@
   --pw-accent-bg: var(--color-background-info, #e6f1fb);
   --pw-good: var(--color-text-success, #27500a);
   --pw-good-bg: var(--color-background-success, #eaf3de);
+  --pw-warn: var(--color-text-warning, #633806);
+  --pw-warn-bg: var(--color-background-warning, #faeeda);
   --pw-radius: var(--border-radius-lg, 12px);
   --pw-radius-sm: var(--border-radius-md, 8px);
   --pw-font: var(--font-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
@@ -35,6 +37,8 @@
     --pw-accent-bg: var(--color-background-info, #0c447c);
     --pw-good: var(--color-text-success, #c0dd97);
     --pw-good-bg: var(--color-background-success, #27500a);
+    --pw-warn: var(--color-text-warning, #fac775);
+    --pw-warn-bg: var(--color-background-warning, #412402);
   }
 }
 :root[data-theme="dark"] {
@@ -49,6 +53,8 @@
   --pw-accent-bg: var(--color-background-info, #0c447c);
   --pw-good: var(--color-text-success, #c0dd97);
   --pw-good-bg: var(--color-background-success, #27500a);
+  --pw-warn: var(--color-text-warning, #fac775);
+  --pw-warn-bg: var(--color-background-warning, #412402);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: transparent; }
@@ -61,6 +67,10 @@ body { font-family: var(--pw-font); color: var(--pw-text); font-size: 14px; line
 .hero { display: flex; gap: 10px; align-items: flex-start; background: var(--pw-good-bg); color: var(--pw-good); border-radius: var(--pw-radius-sm); padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
 .hero b { display: block; font-weight: 600; }
 .hero .ico { font-size: 18px; line-height: 1; }
+.warn { display: flex; gap: 10px; align-items: flex-start; background: var(--pw-warn-bg); color: var(--pw-warn); border-radius: var(--pw-radius-sm); padding: 10px 12px; margin-bottom: 12px; font-size: 12.5px; }
+.warn b { display: block; font-weight: 600; }
+.warn .ico { font-size: 16px; line-height: 1.2; }
+.warn button { color: inherit; border-color: currentColor; white-space: nowrap; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; }
 .tile { border: 1px solid var(--pw-border); border-radius: var(--pw-radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .tile.best { border: 2px solid var(--pw-accent); padding: 9px 11px; }

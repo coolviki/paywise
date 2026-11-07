@@ -10,7 +10,6 @@ Security model (Phase 1):
     another user's data even if prompted to.
   * All tools are read-only.
 """
-import asyncio
 import logging
 from datetime import date
 from functools import lru_cache
@@ -31,6 +30,7 @@ from ..models.card import Card
 from ..models.offer import Offer
 from ..api.restaurant_offers import _get_provider, _get_user_enabled_platforms
 from ..services.llm_search.base import Platform
+from ..services.llm_search.platform_search import STATUS_OK, search_platforms_with_status
 from ..services.location_service import LocationService
 from ..services.mcp_key_service import McpKeyService
 from ..services.recommendation_service import (
@@ -42,7 +42,12 @@ from ..services.recommendation_service import (
 logger = logging.getLogger(__name__)
 
 USER_STATE_KEY = "paywise_user_id"
-RESTAURANT_SEARCH_TIMEOUT_S = 50
+# Each app is searched separately: up to 40s per attempt, one retry when an app
+# errors / times out / returns nothing, all within a 75s overall budget.
+RESTAURANT_SEARCH_TIMEOUT_S = 75
+RESTAURANT_ATTEMPT_TIMEOUT_S = 40
+RESTAURANT_MAX_ATTEMPTS = 2
+RESTAURANT_RETRY_DELAY_S = 1.5
 
 PLATFORM_ALIASES = {
     "swiggy": Platform.SWIGGY_DINEOUT,
@@ -78,6 +83,9 @@ How to answer "which card should I use?":
    Swiggy Dineout, EazyDiner and District (formerly Zomato dining) deals. These stack with
    the card reward: suggest the best app deal + the best card to pay with. If an app offer is
    bank-specific and matches_your_cards is true, that usually beats the plain card reward.
+   ALWAYS check `platforms_without_results`: if any app is listed there (no offers, timed
+   out or failed), say so explicitly - never present the answer as covering all apps - and
+   re-check that app alone by calling get_restaurant_offers again with platforms=[that app].
 5. Answer with the best card first, the estimated reward in rupees, and the runner-up.
    Mention validity dates for campaigns/offers. Never invent offers that no tool returned.
 If the user has no cards saved, tell them to add cards at paywise.vikramkumar.org."""
@@ -371,7 +379,9 @@ async def get_restaurant_offers(
     """Live dine-out offers for a restaurant from Swiggy Dineout, EazyDiner and District
     (Zomato's dining-out offers now live on District). Includes pre-booked/walk-in discounts
     and bank-specific deals, flagged when they match the user's own cards.
-    Searches the web live, so it can take 10-40 seconds.
+    Searches the web live, so it can take 10-40 seconds. Each app is searched separately and
+    retried once if it fails or returns nothing; `platform_status` reports every app's outcome
+    and `platforms_without_results` lists any app you must mention as missing.
 
     Args:
         restaurant: Restaurant name, e.g. "Wok in the Clouds".
@@ -411,14 +421,14 @@ async def get_restaurant_offers(
                 "note": "Dine-out offer search is not configured on the PayWise server."}
 
     try:
-        result = await asyncio.wait_for(
-            provider.search_restaurant_offers(restaurant_name=restaurant, city=city, platforms=selected),
-            timeout=RESTAURANT_SEARCH_TIMEOUT_S,
+        result = await search_platforms_with_status(
+            provider, restaurant, city, selected,
+            total_timeout=RESTAURANT_SEARCH_TIMEOUT_S,
+            per_attempt_timeout=RESTAURANT_ATTEMPT_TIMEOUT_S,
+            max_attempts=RESTAURANT_MAX_ATTEMPTS,
+            retry_delay=RESTAURANT_RETRY_DELAY_S,
         )
-    except asyncio.TimeoutError:
-        return {"restaurant": restaurant, "city": city, "offers": [],
-                "note": "Dine-out offer search timed out. Try again, or narrow platforms."}
-    except Exception as e:  # provider/network failure should not break the chat
+    except Exception as e:  # defensive: the helper reports per-app failures itself
         logger.exception("get_restaurant_offers failed")
         return {"restaurant": restaurant, "city": city, "offers": [],
                 "note": f"Could not fetch dine-out offers right now ({type(e).__name__})."}
@@ -436,13 +446,24 @@ async def get_restaurant_offers(
         d["matches_your_cards"] = _matches(d.get("bank_name"))
         offers.append({k: v for k, v in d.items() if v not in (None, "")})
 
-    return {
-        "restaurant": result.restaurant_name,
-        "city": result.city,
+    platform_status = {p.value: out.as_status() for p, out in result.outcomes.items()}
+    incomplete = [p.value for p, out in result.outcomes.items() if out.status != STATUS_OK]
+    response = {
+        "restaurant": restaurant,
+        "city": city,
         "platforms_searched": [p.value for p in selected],
+        # Per-app outcome so an app with no results is visible instead of vanishing:
+        # status = ok | no_offers | timed_out | error
+        "platform_status": platform_status,
+        "platforms_without_results": incomplete,
+        "complete": not incomplete,
         "your_card_banks": user_banks,
         "pay_with": pay_with,
         "offers": offers,
-        "summary": result.summary,
+        "summary": result.summary(),
         "sources": result.sources[:8],
     }
+    note = result.status_note()
+    if note:
+        response["note"] = note + " You can call get_restaurant_offers again with just that app in `platforms`."
+    return response
