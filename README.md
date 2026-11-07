@@ -118,6 +118,7 @@ offers from PayWise, and PayWise does the reward maths.
 - *"Dinner for 6 at a Taj property tonight, about ₹12,000. Which card?"*
 - *"Buying a ₹65k laptop at Croma. Any bank offers on my cards?"*
 - *"Which of my cards is best for BigBasket groceries?"*
+- *"Going to Wok in the Clouds, Gurgaon tonight. Best Dineout/District deal and which card to pay with?"*
 - *"List my cards and their reward rates."*
 
 ### Connect in 2 minutes (each user does this once)
@@ -141,6 +142,7 @@ All tools are **read-only**. Claude cannot add, change or delete anything in Pay
 | `recommend_card` | `merchant`, `amount_inr?`, `category?` | **All** your cards ranked best-first, with reward %, estimated ₹ reward, rate source (`brand_ecosystem` / `campaign` / `base_rate`), validity date and T&C link |
 | `get_card_offers` | `merchant?`, `limit?` | Current (non-expired) bank offers and limited-time campaigns on your cards |
 | `find_place` | `query` | Google Places lookup to confirm a merchant and suggest its category |
+| `get_restaurant_offers` | `restaurant`, `city`, `platforms?` | **Live dine-out deals** from Swiggy Dineout, EazyDiner and District (Zomato's dining offers now live on District): pre-booked and walk-in discounts plus bank offers, with `matches_your_cards` set when an offer is for a bank you hold. Uses the dine-out apps you enabled in PayWise (all three if none). Live web search, so it takes 10–40 s |
 
 The ranking is deterministic and uses the same logic as the in-app recommendation
 (`rank_cards_for_user` in `backend/app/services/recommendation_service.py`). No LLM is called inside
