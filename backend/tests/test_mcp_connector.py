@@ -59,7 +59,7 @@ def test_revoked_key_stops_working(client, seed):
 def test_tools_are_read_only_and_take_no_user_argument(client, seed):
     key = _create_key(client, seed["alice"])["api_key"]
     tools = mcp_call(client, key, "tools/list").json()["result"]["tools"]
-    assert {t["name"] for t in tools} == {"list_my_cards", "recommend_card", "get_card_offers", "find_place"}
+    assert {t["name"] for t in tools} == {"list_my_cards", "recommend_card", "get_card_offers", "find_place", "get_restaurant_offers"}
     for t in tools:
         assert t["annotations"]["readOnlyHint"] is True
         props = set(t["inputSchema"].get("properties", {}))

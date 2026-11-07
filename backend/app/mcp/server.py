@@ -10,8 +10,10 @@ Security model (Phase 1):
     another user's data even if prompted to.
   * All tools are read-only.
 """
+import asyncio
+import logging
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from mcp.server.fastmcp import Context, FastMCP
@@ -25,6 +27,8 @@ from ..core.database import SessionLocal
 from ..models.campaign import Campaign
 from ..models.card import Card
 from ..models.offer import Offer
+from ..api.restaurant_offers import _get_provider, _get_user_enabled_platforms
+from ..services.llm_search.base import Platform
 from ..services.location_service import LocationService
 from ..services.mcp_key_service import McpKeyService
 from ..services.recommendation_service import (
@@ -33,7 +37,32 @@ from ..services.recommendation_service import (
     rank_cards_for_user,
 )
 
+logger = logging.getLogger(__name__)
+
 USER_STATE_KEY = "paywise_user_id"
+RESTAURANT_SEARCH_TIMEOUT_S = 50
+
+PLATFORM_ALIASES = {
+    "swiggy": Platform.SWIGGY_DINEOUT,
+    "swiggy_dineout": Platform.SWIGGY_DINEOUT,
+    "dineout": Platform.SWIGGY_DINEOUT,
+    "eazydiner": Platform.EAZYDINER,
+    "district": Platform.DISTRICT,
+    # Zomato's dining-out business moved to District
+    "zomato": Platform.DISTRICT,
+}
+ALL_DINEOUT_PLATFORMS = [Platform.SWIGGY_DINEOUT, Platform.EAZYDINER, Platform.DISTRICT]
+
+_GENERIC_BANK_WORDS = {"bank", "card", "cards", "credit", "debit", "ltd", "limited", "of", "the", "india", "&", "and"}
+_BANK_SYNONYMS = {"american": "amex", "express": "amex", "state": "sbi", "kotak": "kotak", "hongkong": "hsbc"}
+
+
+def _bank_tokens(name: Optional[str]) -> set:
+    """Distinctive words of a bank name: "HDFC Bank" -> {"hdfc"}, "Bank of Baroda" -> {"baroda"}."""
+    if not name:
+        return set()
+    words = name.lower().replace(".", " ").replace("-", " ").split()
+    return {_BANK_SYNONYMS.get(w, w) for w in words if w not in _GENERIC_BANK_WORDS}
 
 INSTRUCTIONS = """PayWise knows which credit/debit cards this user holds and the
 reward rates, brand ecosystem benefits and bank offers that apply to them (India, INR).
@@ -43,7 +72,11 @@ How to answer "which card should I use?":
 2. Call recommend_card with the merchant name, amount (if known) and category.
    The ranking is computed by PayWise - trust its numbers, do not recalculate rates.
 3. Optionally call get_card_offers for time-limited bank offers at that merchant.
-4. Answer with the best card first, the estimated reward in rupees, and the runner-up.
+4. For RESTAURANTS / dining out, ALSO call get_restaurant_offers (needs the city) to get
+   Swiggy Dineout, EazyDiner and District (formerly Zomato dining) deals. These stack with
+   the card reward: suggest the best app deal + the best card to pay with. If an app offer is
+   bank-specific and matches_your_cards is true, that usually beats the plain card reward.
+5. Answer with the best card first, the estimated reward in rupees, and the runner-up.
    Mention validity dates for campaigns/offers. Never invent offers that no tool returned.
 If the user has no cards saved, tell them to add cards at paywise.vikramkumar.org."""
 
@@ -276,3 +309,83 @@ async def find_place(ctx: Context, query: str) -> dict:
             "suggested_category": _get_category_type(" ".join(types)),
         })
     return {"query": query, "places": places}
+
+@paywise_mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=True))
+async def get_restaurant_offers(
+    ctx: Context,
+    restaurant: str,
+    city: str,
+    platforms: Optional[List[str]] = None,
+) -> dict:
+    """Live dine-out offers for a restaurant from Swiggy Dineout, EazyDiner and District
+    (Zomato's dining-out offers now live on District). Includes pre-booked/walk-in discounts
+    and bank-specific deals, flagged when they match the user's own cards.
+    Searches the web live, so it can take 10-40 seconds.
+
+    Args:
+        restaurant: Restaurant name, e.g. "Wok in the Clouds".
+        city: City, e.g. "Gurgaon", "Delhi", "Mumbai".
+        platforms: Optional subset: "swiggy_dineout", "eazydiner", "district" (or "zomato").
+            Omit to use the dine-out apps the user enabled in PayWise (or all three).
+    """
+    user_id = _current_user_id(ctx)
+
+    db = SessionLocal()
+    try:
+        if platforms:
+            selected = []
+            for p in platforms:
+                plat = PLATFORM_ALIASES.get(p.strip().lower())
+                if plat and plat not in selected:
+                    selected.append(plat)
+        else:
+            selected = _get_user_enabled_platforms(db, user_id)
+        selected = selected or list(ALL_DINEOUT_PLATFORMS)
+
+        user_banks = sorted({
+            pm.card.bank.name for pm in load_user_payment_methods(db, user_id)
+            if pm.card and pm.card.bank
+        })
+    finally:
+        db.close()
+
+    provider = _get_provider()
+    if not provider:
+        return {"restaurant": restaurant, "city": city, "offers": [],
+                "note": "Dine-out offer search is not configured on the PayWise server."}
+
+    try:
+        result = await asyncio.wait_for(
+            provider.search_restaurant_offers(restaurant_name=restaurant, city=city, platforms=selected),
+            timeout=RESTAURANT_SEARCH_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        return {"restaurant": restaurant, "city": city, "offers": [],
+                "note": "Dine-out offer search timed out. Try again, or narrow platforms."}
+    except Exception as e:  # provider/network failure should not break the chat
+        logger.exception("get_restaurant_offers failed")
+        return {"restaurant": restaurant, "city": city, "offers": [],
+                "note": f"Could not fetch dine-out offers right now ({type(e).__name__})."}
+
+    user_bank_tokens = [_bank_tokens(b) for b in user_banks]
+
+    def _matches(bank_name: Optional[str]) -> bool:
+        tokens = _bank_tokens(bank_name)
+        return bool(tokens) and any(tokens & ub for ub in user_bank_tokens)
+
+    offers = []
+    for o in result.offers:
+        d = o.model_dump() if hasattr(o, "model_dump") else dict(o)
+        d["platform"] = getattr(d.get("platform"), "value", d.get("platform"))
+        d["matches_your_cards"] = _matches(d.get("bank_name"))
+        offers.append({k: v for k, v in d.items() if v not in (None, "")})
+
+    return {
+        "restaurant": result.restaurant_name,
+        "city": result.city,
+        "platforms_searched": [p.value for p in selected],
+        "your_card_banks": user_banks,
+        "offers": offers,
+        "summary": result.summary,
+        "sources": result.sources[:8],
+    }
