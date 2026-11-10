@@ -13,8 +13,13 @@ import httpx
 from bs4 import BeautifulSoup
 
 from .base import RestaurantOffer, Platform, PLATFORM_INFO
+from .restaurant_match import LOCATION_ABBREVIATIONS, name_matches, page_restaurant_name, score_candidate, split_query, tokens as tokens_in_order
 
 logger = logging.getLogger(__name__)
+
+
+CITY_WORDS = {"new", "delhi", "ncr", "india", "gurgaon", "gurugram", "noida", "mumbai", "bangalore",
+              "bengaluru", "hyderabad", "chennai", "pune", "kolkata", "ahmedabad", "jaipur", "chandigarh"}
 
 
 class DistrictScraper:
@@ -39,243 +44,138 @@ class DistrictScraper:
             )
         return self._client
 
-    async def search_restaurant(self, restaurant_name: str, city: str) -> Optional[str]:
-        """
-        Search for a restaurant on District and return its page URL.
-        """
+    # District city codes. Localities map to their metro so "Connaught Place" / "CP" work as a city.
+    CITY_CODES = {
+        "delhi": "ncr", "new delhi": "ncr", "ncr": "ncr", "delhi ncr": "ncr", "gurgaon": "ncr",
+        "gurugram": "ncr", "noida": "ncr", "greater noida": "ncr", "faridabad": "ncr",
+        "mumbai": "mumbai", "bombay": "mumbai", "bangalore": "bangalore", "bengaluru": "bangalore",
+        "hyderabad": "hyderabad", "chennai": "chennai", "pune": "pune", "kolkata": "kolkata",
+        "ahmedabad": "ahmedabad", "jaipur": "jaipur", "chandigarh": "chandigarh",
+    }
+    LOCALITY_CITY = {
+        "connaught": "ncr", "janpath": "ncr", "khan": "ncr", "hauz": "ncr", "saket": "ncr",
+        "aerocity": "ncr", "cyber": "ncr", "cyberhub": "ncr", "defence": "ncr", "kailash": "ncr",
+        "vasant": "ncr", "chanakyapuri": "ncr", "sector": "ncr", "dlf": "ncr",
+        "bandra": "mumbai", "andheri": "mumbai", "juhu": "mumbai", "worli": "mumbai", "parel": "mumbai",
+        "colaba": "mumbai", "powai": "mumbai", "bkc": "mumbai",
+        "indiranagar": "bangalore", "koramangala": "bangalore", "whitefield": "bangalore",
+    }
+    MAX_GUESSES = 12
+
+    def _city_code(self, city: str, loc_tokens) -> str:
+        c = re.sub(r"\s+", " ", (city or "").lower().split(",")[-1]).strip()
+        if c in self.CITY_CODES:
+            return self.CITY_CODES[c]
+        for part in (city or "").lower().split(","):
+            if part.strip() in self.CITY_CODES:
+                return self.CITY_CODES[part.strip()]
+        for w in loc_tokens:
+            if w in self.CITY_CODES:
+                return self.CITY_CODES[w]
+            if w in self.LOCALITY_CITY:
+                return self.LOCALITY_CITY[w]
+        return "ncr"
+
+    async def _fetch(self, url: str) -> Optional[httpx.Response]:
         client = await self._get_client()
-
-        # Map city names to District's city codes
-        city_map = {
-            "delhi": "ncr",
-            "new delhi": "ncr",
-            "ncr": "ncr",
-            "gurgaon": "ncr",
-            "gurugram": "ncr",
-            "noida": "ncr",
-            "mumbai": "mumbai",
-            "bangalore": "bangalore",
-            "bengaluru": "bangalore",
-            "hyderabad": "hyderabad",
-            "chennai": "chennai",
-            "pune": "pune",
-            "kolkata": "kolkata",
-            "ahmedabad": "ahmedabad",
-            "jaipur": "jaipur",
-        }
-
-        district_city = city_map.get(city.lower(), city.lower())
-
-        # Try to search via the dining listing page
         try:
-            # First, try the dining search page
-            search_url = f"{self.BASE_URL}/dining/{district_city}"
-            response = await client.get(search_url)
-
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, "html.parser")
-
-                # Look for restaurant links that match
-                restaurant_lower = restaurant_name.lower()
-                for link in soup.find_all("a", href=True):
-                    href = link.get("href", "")
-                    text = link.get_text().lower()
-
-                    # Check if this link points to a restaurant page
-                    if "/dining/" in href and district_city in href:
-                        # Check if restaurant name matches
-                        if self._fuzzy_match(restaurant_lower, text) or self._fuzzy_match(restaurant_lower, href):
-                            full_url = href if href.startswith("http") else f"{self.BASE_URL}{href}"
-                            return full_url
-
+            resp = await client.get(url)
+            return resp if resp.status_code == 200 else None
         except Exception as e:
-            logger.warning(f"Error searching District: {e}")
+            logger.info(f"[DISTRICT] fetch failed {url}: {type(e).__name__}")
+            return None
 
-        # Fallback: construct URL based on common patterns
-        slug = self._make_slug(restaurant_name)
-        guessed_url = f"{self.BASE_URL}/dining/{district_city}/{slug}"
+    async def _listing_candidates(self, city_code: str, name_tokens, loc_tokens) -> List[str]:
+        """Restaurant links on District's listing pages whose NAME matches, best first."""
+        scored = {}
+        for listing in (f"{self.BASE_URL}/dining/{city_code}", f"{self.BASE_URL}/dining/{city_code}/restaurants"):
+            resp = await self._fetch(listing)
+            if not resp:
+                continue
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for link in soup.find_all("a", href=True):
+                href = link["href"]
+                if f"/dining/{city_code}/" not in href or href.rstrip("/").endswith("/restaurants"):
+                    continue
+                url = href if href.startswith("http") else f"{self.BASE_URL}{href}"
+                # Score on the link's NAME text only (District link text is just the name);
+                # area words in the URL never make a match on their own.
+                text = link.get_text(" ", strip=True)
+                score = score_candidate(name_tokens, loc_tokens, text, url) if text else None
+                if score is not None and score > scored.get(url, float("-inf")):
+                    scored[url] = score
+        ranked = sorted(scored, key=lambda u: scored[u], reverse=True)
+        logger.info(f"[DISTRICT] Listing candidates: {ranked[:5]}")
+        return ranked
 
-        # Verify the URL exists
-        try:
-            response = await client.head(guessed_url)
-            if response.status_code == 200:
-                return guessed_url
-        except:
-            pass
+    def _guessed_urls(self, restaurant_name: str, city_code: str, name_tokens, loc_tokens) -> List[str]:
+        """District slugs look like {name}-{area}-{city}, e.g. drama-connaught-place-new-delhi."""
+        name_slug = "-".join(name_tokens)
+        raw_slug = self._make_slug(restaurant_name)
+        # Area words in the order the user wrote them, with abbreviations expanded (cp -> connaught place)
+        area_words = " ".join(LOCATION_ABBREVIATIONS.get(w, w) for w in tokens_in_order(restaurant_name)).split()
+        area_words = [w for w in area_words if w in loc_tokens and w not in CITY_WORDS]
+        loc_slug = "-".join(dict.fromkeys(area_words))
+        city_suffix = {"ncr": ["new-delhi", "gurgaon", "noida", "delhi"]}.get(city_code, [city_code])
+        slugs = [raw_slug, name_slug]
+        if loc_slug:
+            slugs += [f"{name_slug}-{loc_slug}-{c}" for c in city_suffix] + [f"{name_slug}-{loc_slug}"]
+            slugs += [f"{name_slug}-1-{loc_slug}-{c}" for c in city_suffix[:1]]
+        seen, out = set(), []
+        for sl in slugs:
+            sl = sl.strip("-")
+            if sl and sl not in seen:
+                seen.add(sl)
+                out.append(f"{self.BASE_URL}/dining/{city_code}/{sl}")
+        return out[: self.MAX_GUESSES]
 
+    async def find_restaurant_page(self, restaurant_name: str, city: str) -> Optional[tuple]:
+        """Return (url, html, page_name) for the page that IS this restaurant, or None.
+
+        Every candidate is fetched and its title checked against the requested name;
+        a page for a different restaurant is rejected instead of returned.
+        """
+        name_tokens, loc_tokens = split_query(restaurant_name, city)
+        city_code = self._city_code(city, loc_tokens)
+        logger.info(f"[DISTRICT] Lookup name={name_tokens} location={sorted(loc_tokens)} city_code={city_code}")
+
+        candidates = await self._listing_candidates(city_code, name_tokens, loc_tokens)
+        candidates += [u for u in self._guessed_urls(restaurant_name, city_code, name_tokens, loc_tokens)
+                       if u not in candidates]
+
+        for url in candidates:
+            resp = await self._fetch(url)
+            if not resp or len(resp.text) < 2000:
+                continue
+            page_name = page_restaurant_name(resp.text)
+            final_url = str(resp.url)
+            if name_matches(name_tokens, page_name):
+                logger.info(f"[DISTRICT] Verified page '{page_name}' at {final_url}")
+                return final_url, resp.text, page_name
+            logger.warning(f"[DISTRICT] Rejected {final_url}: page is '{page_name}', not '{restaurant_name}'")
+        logger.info(f"[DISTRICT] No verified District page for '{restaurant_name}' ({city})")
         return None
 
-    def _fuzzy_match(self, search: str, text: str) -> bool:
-        """Check if search term fuzzy matches text."""
-        search_words = search.lower().split()
-        text_lower = text.lower()
-
-        # Check if most words from search appear in text
-        matches = sum(1 for word in search_words if word in text_lower)
-        return matches >= len(search_words) * 0.6
-
-    def _make_slug(self, name: str, strip_location: bool = False) -> str:
-        """Convert restaurant name to URL slug.
-
-        Args:
-            name: Restaurant name
-            strip_location: If True, remove common location words from the name
-        """
-        slug = name.lower()
-
-        # Optionally strip location suffixes that users might append to restaurant names
-        # Be careful NOT to strip words that might be part of the actual restaurant name
-        if strip_location:
-            # Only strip these when they appear at the END or are clearly location suffixes
-            # Don't strip "delhi" alone as it could be part of names like "Cafe Delhi Heights"
-            location_suffixes = [
-                # These are safe to strip as they're clearly locations appended to names
-                r'\s+cyber\s*hub$', r'\s+cyberhub$', r'\s+dlf\s+cyber\s+city$',
-                r'\s+dlf\s+cyber\s+hub$', r'\s+cyber\s+city$',
-                r'\s+khan\s+market$', r'\s+connaught\s+place$', r'\s+cp$',
-                r'\s+saket$', r'\s+hauz\s+khas$', r'\s+hkv$',
-                r'\s+defence\s+colony$', r'\s+greater\s+kailash$', r'\s+gk$',
-                r'\s+vasant\s+kunj$', r'\s+aerocity$',
-                r'\s+gurgaon$', r'\s+gurugram$', r'\s+noida$',
-                r'\s+bandra$', r'\s+andheri$', r'\s+juhu$', r'\s+lower\s+parel$',
-                r'\s+worli$', r'\s+colaba$', r'\s+bkc$', r'\s+powai$',
-                r'\s+indiranagar$', r'\s+koramangala$', r'\s+whitefield$',
-                r'\s+mg\s+road$', r'\s+brigade\s+road$',
-                r'\s+sector\s+\d+$',  # Sector 29, Sector 24, etc.
-            ]
-            for pattern in location_suffixes:
-                slug = re.sub(pattern, '', slug, flags=re.IGNORECASE)
-
-        # Remove special characters, convert to lowercase, replace spaces with hyphens
-        slug = re.sub(r'[^\w\s-]', '', slug)
-        slug = re.sub(r'[\s_]+', '-', slug)
-        slug = re.sub(r'-+', '-', slug)
-        return slug.strip('-')
+    def _make_slug(self, name: str) -> str:
+        slug = re.sub(r"[^\w\s-]", "", name.lower())
+        slug = re.sub(r"[\s_]+", "-", slug)
+        return re.sub(r"-+", "-", slug).strip("-")
 
     async def get_offers(self, restaurant_name: str, city: str) -> List[RestaurantOffer]:
-        """
-        Get all offers for a restaurant from District.
-        """
+        """Get all offers for a restaurant from District (only from its verified page)."""
         logger.info(f"[DISTRICT] get_offers called: restaurant='{restaurant_name}', city='{city}'")
-        offers = []
-        client = await self._get_client()
-
-        # First, find the restaurant page
-        restaurant_url = await self.search_restaurant(restaurant_name, city)
-        logger.info(f"[DISTRICT] Restaurant URL found: {restaurant_url}")
-
-        if not restaurant_url:
-            # Try direct URL construction with variations
-            city_map = {
-                "delhi": "ncr",
-                "new delhi": "ncr",
-                "gurgaon": "ncr",
-                "gurugram": "ncr",
-                "noida": "ncr",
-                "cyber hub": "ncr",
-                "cyberhub": "ncr",
-                "dlf cyber city": "ncr",
-                "dlf cyber hub": "ncr",
-                "mumbai": "mumbai",
-                "bangalore": "bangalore",
-                "bengaluru": "bangalore",
-                "hyderabad": "hyderabad",
-                "chennai": "chennai",
-                "pune": "pune",
-                "kolkata": "kolkata",
-            }
-            district_city = city_map.get(city.lower().strip(), "ncr")  # Default to NCR
-
-            # Common location suffixes for each city
-            location_suffixes = {
-                "ncr": [
-                    "dlf-cyber-city", "cyber-hub", "cyberhub", "cyber-city",
-                    "khan-market", "connaught-place", "cp", "saket", "select-citywalk",
-                    "gurgaon", "gurugram", "delhi", "new-delhi", "noida",
-                    "hauz-khas", "defence-colony", "greater-kailash", "gk",
-                    "vasant-kunj", "janpath", "nehru-place", "aerocity",
-                    "dlf-phase", "sector-29", "mg-road", "sohna-road",
-                ],
-                "mumbai": [
-                    "bandra", "andheri", "juhu", "lower-parel", "worli",
-                    "colaba", "fort", "bkc", "powai", "goregaon", "malad",
-                ],
-                "bangalore": [
-                    "indiranagar", "koramangala", "whitefield", "mg-road",
-                    "brigade-road", "jp-nagar", "hsr-layout", "electronic-city",
-                ],
-            }
-
-            # Create slugs - try with location stripped first (handles "Cafe Delhi Heights Cyber Hub")
-            base_slug_clean = self._make_slug(restaurant_name, strip_location=True)
-            base_slug_raw = self._make_slug(restaurant_name, strip_location=False)
-            suffixes = location_suffixes.get(district_city, [])
-
-            # Build list of slugs to try
-            slugs = []
-
-            # First priority: clean slug (location stripped) + location suffixes
-            slugs.append(base_slug_clean)
-            for suffix in suffixes:
-                slugs.append(f"{base_slug_clean}-{suffix}")
-
-            # Second priority: raw slug (if different from clean)
-            if base_slug_raw != base_slug_clean:
-                slugs.append(base_slug_raw)
-                for suffix in suffixes:
-                    slugs.append(f"{base_slug_raw}-{suffix}")
-
-            # Also try with city name and without apostrophes
-            slugs.append(self._make_slug(f"{restaurant_name} {city}"))
-            slugs.append(self._make_slug(restaurant_name.replace("'", ""), strip_location=True))
-
-            # Remove duplicates while preserving order
-            seen = set()
-            unique_slugs = []
-            for s in slugs:
-                if s not in seen:
-                    seen.add(s)
-                    unique_slugs.append(s)
-            slugs = unique_slugs
-
-            logger.info(f"[DISTRICT] Trying {len(slugs)} URL variations...")
-
-            for slug in slugs:
-                test_url = f"{self.BASE_URL}/dining/{district_city}/{slug}"
-                try:
-                    response = await client.head(test_url, follow_redirects=True)
-                    if response.status_code == 200:
-                        # Verify it's a real page with content
-                        full_response = await client.get(test_url)
-                        if full_response.status_code == 200 and len(full_response.text) > 5000:
-                            logger.info(f"[DISTRICT] Found working URL: {test_url}")
-                            restaurant_url = test_url
-                            break
-                except:
-                    continue
-
-        if not restaurant_url:
-            logger.info(f"[DISTRICT] Could not find {restaurant_name} on District - returning empty offers")
-            return offers
-
-        # Fetch the restaurant page
+        found = await self.find_restaurant_page(restaurant_name, city)
+        if not found:
+            return []
+        url, html, page_name = found
         try:
-            logger.info(f"[DISTRICT] Fetching page: {restaurant_url}")
-            response = await client.get(restaurant_url)
-            logger.info(f"[DISTRICT] Response status: {response.status_code}, content length: {len(response.text)} chars")
-
-            if response.status_code != 200:
-                logger.warning(f"[DISTRICT] Failed to fetch District page: {response.status_code}")
-                return offers
-
-            offers = self._parse_offers(response.text, restaurant_url)
-            logger.info(f"[DISTRICT] Parsed {len(offers)} offers from page")
-            for i, offer in enumerate(offers):
-                logger.info(f"[DISTRICT]   #{i+1}: {offer.offer_type} - {offer.discount_text[:50] if offer.discount_text else 'N/A'}")
-
+            offers = self._parse_offers(html, url)
         except Exception as e:
-            logger.error(f"[DISTRICT] Error fetching District offers: {e}", exc_info=True)
-
+            logger.error(f"[DISTRICT] Error parsing District offers: {e}", exc_info=True)
+            return []
+        for o in offers:
+            o.matched_restaurant = page_name
+        logger.info(f"[DISTRICT] Parsed {len(offers)} offers for '{page_name}'")
         return offers
 
     def _parse_offers(self, html: str, source_url: str) -> List[RestaurantOffer]:

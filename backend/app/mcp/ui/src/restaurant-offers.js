@@ -83,6 +83,7 @@ function tile(o, isBest, bridge) {
     detail && h("p", { class: "muted" }, detail),
     limits && h("p", { class: "muted" }, limits),
     o.conditions && h("p", { class: "muted" }, o.conditions),
+    o.matched_restaurant && h("p", { class: "muted" }, `📍 ${o.matched_restaurant}`),
     h(
       "div",
       { class: "chips" },
