@@ -83,6 +83,8 @@ How to answer "which card should I use?":
    Swiggy Dineout, EazyDiner and District (formerly Zomato dining) deals. These stack with
    the card reward: suggest the best app deal + the best card to pay with. If an app offer is
    bank-specific and matches_your_cards is true, that usually beats the plain card reward.
+   Each offer may carry `matched_restaurant` (the page it came from); if it is clearly a
+   different restaurant from the one asked about, leave that offer out and say so.
    ALWAYS check `platforms_without_results`: if any app is listed there (no offers, timed
    out or failed), say so explicitly - never present the answer as covering all apps - and
    re-check that app alone by calling get_restaurant_offers again with platforms=[that app].

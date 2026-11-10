@@ -62,6 +62,7 @@ class RestaurantOffer(BaseModel):
     source_url: Optional[str] = None  # Link to the offer/restaurant on platform
     platform_url: Optional[str] = None  # Deep link to app/website
     app_link: Optional[str] = None  # App deep link
+    matched_restaurant: Optional[str] = None  # Name of the restaurant page the offer came from
 
     class Config:
         use_enum_values = True
